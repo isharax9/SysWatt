@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="480" viewBox="0 0 860 480">
+  <rect width="860" height="480" rx="18" fill="#101418"/>
+  <text x="48" y="62" fill="#76e6b4" font-family="Segoe UI, sans-serif" font-size="28" font-weight="700">SYSWATT</text>
+  <text x="48" y="88" fill="#84919b" font-family="Segoe UI, sans-serif" font-size="13">SCREENSHOT PLACEHOLDER · REAL HARDWARE CAPTURE PENDING</text>
+  <g fill="#171d22"><rect x="48" y="120" width="235" height="115" rx="10"/><rect x="312" y="120" width="235" height="115" rx="10"/><rect x="576" y="120" width="235" height="115" rx="10"/></g>
+  <g fill="#84919b" font-family="Segoe UI, sans-serif" font-size="13"><text x="70" y="150">CPU LOAD</text><text x="334" y="150">GPU LOAD</text><text x="598" y="150">MEMORY</text></g>
+  <g fill="#f4f7f8" font-family="Segoe UI, sans-serif" font-size="34" font-weight="600"><text x="70" y="198">— %</text><text x="334" y="198">— %</text><text x="598" y="198">— %</text></g>
+  <rect x="48" y="264" width="763" height="158" rx="12" fill="#13251f" stroke="#315847"/>
+  <text x="74" y="302" fill="#76e6b4" font-family="Segoe UI, sans-serif" font-size="14" font-weight="600">ESTIMATED TOTAL PC POWER</text>
+  <text x="74" y="365" fill="#f4f7f8" font-family="Segoe UI, sans-serif" font-size="48" font-weight="700">— W</text>
+  <text x="74" y="394" fill="#84919b" font-family="Segoe UI, sans-serif" font-size="12">NOT A WALL-METER MEASUREMENT</text>
+</svg>

@@ -1,0 +1,21 @@
+# Build and package output
+bin/
+obj/
+artifacts/
+TestResults/
+
+# Workspace-local tooling/cache
+.dotnet-cli/
+.nuget/
+
+# User settings and IDEs
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+
+# OS files
+Thumbs.db
+Desktop.ini
+*.log

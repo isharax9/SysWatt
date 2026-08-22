@@ -1,0 +1,28 @@
+<Application x:Class="SysWatt.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+  <Application.Resources>
+    <SolidColorBrush x:Key="WindowBackground" Color="#101418" />
+    <SolidColorBrush x:Key="CardBackground" Color="#171D22" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#76E6B4" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#84919B" />
+    <Style TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
+      <Setter Property="Foreground" Value="#F4F7F8" />
+    </Style>
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="#F4F7F8" />
+      <Setter Property="Background" Value="#263039" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style x:Key="MetricCard" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource CardBackground}" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="0,0,8,8" />
+    </Style>
+  </Application.Resources>
+</Application>
