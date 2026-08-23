@@ -1,12 +1,13 @@
 namespace SysWatt.Core.Sensors;
 
-public enum HardwareKind { Unknown, Cpu, GpuNvidia, GpuAmd, GpuIntel, Memory, Storage, Motherboard, Controller, Network }
+public enum HardwareKind { Unknown, Cpu, GpuNvidia, GpuAmd, GpuIntel, Memory, Storage, Motherboard, Controller, Network, Psu, Ups }
 public enum SensorKind { Unknown, Load, Temperature, Power, Fan, Data, Throughput, Clock, Voltage, Control }
+public enum TelemetrySource { Standalone, FullHardwareAccess, HWiNFOBridge, HybridModel, Imported }
 public enum MetricKind
 {
     CpuUsage, CpuTemperature, CpuPower, GpuUsage, GpuTemperature, GpuPower,
-    MemoryUsage, StorageActivity, StorageTemperature, FanSpeed,
-    EstimatedDcPower, EstimatedWallPower
+    MemoryUsage, StorageActivity, StorageReadRate, StorageWriteRate, StorageTemperature, StoragePower, FanSpeed,
+    SystemPower, EstimatedDcPower, EstimatedWallPower, BaseSystemPower, CoolingPower, ExternalPower
 }
 
 public sealed record SensorDescriptor(
@@ -36,6 +37,7 @@ public sealed record MetricReading(
     string? SourceName,
     string? Explanation)
 {
+    public string? SourceProvider { get; init; }
     public bool IsAvailable => Value.HasValue && !IsStale;
 
     public static MetricReading Unavailable(MetricKind metric, string unit, DateTimeOffset timestamp, string reason) =>
@@ -55,6 +57,8 @@ public sealed record FanReading(
 public sealed record MetricSnapshot(DateTimeOffset Timestamp, IReadOnlyDictionary<MetricKind, MetricReading> Metrics)
 {
     public IReadOnlyList<FanReading> Fans { get; init; } = [];
+    public TelemetrySource Source { get; init; } = TelemetrySource.Standalone;
+    public string SourceDiagnostic { get; init; } = string.Empty;
     public MetricReading this[MetricKind metric] => Metrics.TryGetValue(metric, out var value)
         ? value
         : MetricReading.Unavailable(metric, MetricUnits.For(metric), Timestamp, "No compatible sensor was detected.");
@@ -69,8 +73,9 @@ public static class MetricUnits
     public static string For(MetricKind metric) => metric switch
     {
         MetricKind.CpuUsage or MetricKind.GpuUsage or MetricKind.MemoryUsage or MetricKind.StorageActivity => "%",
+        MetricKind.StorageReadRate or MetricKind.StorageWriteRate => "MB/s",
         MetricKind.CpuTemperature or MetricKind.GpuTemperature or MetricKind.StorageTemperature => "°C",
-        MetricKind.CpuPower or MetricKind.GpuPower or MetricKind.EstimatedDcPower or MetricKind.EstimatedWallPower => "W",
+        MetricKind.CpuPower or MetricKind.GpuPower or MetricKind.StoragePower or MetricKind.SystemPower or MetricKind.EstimatedDcPower or MetricKind.EstimatedWallPower or MetricKind.BaseSystemPower or MetricKind.CoolingPower or MetricKind.ExternalPower => "W",
         MetricKind.FanSpeed => "RPM",
         _ => string.Empty
     };

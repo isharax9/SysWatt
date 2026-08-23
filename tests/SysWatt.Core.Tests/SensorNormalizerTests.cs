@@ -54,15 +54,26 @@ public sealed class SensorNormalizerTests
     }
 
     [Fact]
-    public void HwinfoSharedMemoryWinsWhenItPublishesAValidEquivalentSensor()
+    public void EmbeddedHardwareSensorWinsOverWindowsFallbackWhenBothAreValid()
     {
-        var direct = Reading("direct", "Core (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 47);
-        var shared = Reading("shared", "CPU (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 51, "HWiNFO Shared Memory");
+        var direct = Reading("direct", "CPU total", HardwareKind.Cpu, SensorKind.Load, 47);
+        var fallback = Reading("fallback", "CPU total", HardwareKind.Cpu, SensorKind.Load, 51, "Windows Native Telemetry");
 
-        var result = _normalizer.Normalize([direct, shared], Now)[MetricKind.CpuTemperature];
+        var result = _normalizer.Normalize([direct, fallback], Now)[MetricKind.CpuUsage];
 
-        Assert.Equal(51, result.Value);
-        Assert.Equal("shared", result.SourceSensorId);
+        Assert.Equal(47, result.Value);
+        Assert.Equal("direct", result.SourceSensorId);
+    }
+
+    [Fact]
+    public void HWiNFOBridgeWinsOverEmbeddedAndWindowsCandidates()
+    {
+        var lhm = Reading("lhm", "CPU Package", HardwareKind.Cpu, SensorKind.Power, 32, "LibreHardwareMonitor");
+        var hwinfo = Reading("hwinfo", "CPU Package Power", HardwareKind.Cpu, SensorKind.Power, 28, "HWiNFO Shared Memory");
+        var result = _normalizer.Normalize([lhm, hwinfo], Now)[MetricKind.CpuPower];
+
+        Assert.Equal(28, result.Value);
+        Assert.Equal("HWiNFO Shared Memory", result.SourceProvider);
     }
 
     [Fact]
@@ -83,6 +94,19 @@ public sealed class SensorNormalizerTests
         Assert.Contains(fans, fan => fan.SensorId == "/cpu/fan/0" && fan.Rpm == 1_225);
         Assert.Contains(fans, fan => fan.SensorId == "/gpu/fan/0" && fan.Rpm == 1_640);
         Assert.Contains(fans, fan => fan.SensorId == "/board/fan/2" && fan.Rpm == 880);
+    }
+
+    [Fact]
+    public void AggregateWindowsDiskActivityWinsOverOneBusyPhysicalDrive()
+    {
+        var oneDrive = Reading("/hdd/2/load/0", "Total Activity", HardwareKind.Storage, SensorKind.Load, 100);
+        var aggregate = Reading("windows/storage/activity", "Total activity", HardwareKind.Storage, SensorKind.Load, 3,
+            "Windows Native Telemetry");
+
+        var result = _normalizer.Normalize([oneDrive, aggregate], Now)[MetricKind.StorageActivity];
+
+        Assert.Equal(3, result.Value);
+        Assert.Equal("Windows Native Telemetry", result.SourceProvider);
     }
 
     private static RawSensorReading Reading(string id, string name, HardwareKind hardware, SensorKind sensor, double? value, string provider = "LibreHardwareMonitor") =>

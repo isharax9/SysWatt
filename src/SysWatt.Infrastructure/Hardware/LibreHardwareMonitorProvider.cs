@@ -37,6 +37,20 @@ public sealed class LibreHardwareMonitorProvider : IRawSensorProvider
             EnsureOpen();
             var now = DateTimeOffset.UtcNow;
             var readings = new List<RawSensorReading>();
+            if (!LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled)
+            {
+                var accessDescriptor = new SensorDescriptor(
+                    Name,
+                    "/librehardwaremonitor/low-level-access",
+                    "Low-level CPU access",
+                    HardwareKind.Cpu,
+                    "/librehardwaremonitor/pawnio-missing",
+                    "PawnIO sensor driver",
+                    SensorKind.Unknown,
+                    string.Empty);
+                readings.Add(new RawSensorReading(accessDescriptor, null, now, false,
+                    "The PawnIO low-level sensor driver is not installed. CPU temperature and package power may be unavailable; HWiNFO and MSI Center use their own privileged drivers."));
+            }
             foreach (var hardware in _computer.Hardware)
             {
                 ReadHardwareRecursive(hardware, readings, now, cancellationToken);
@@ -110,6 +124,7 @@ public sealed class LibreHardwareMonitorProvider : IRawSensorProvider
         HardwareType.Motherboard => HardwareKind.Motherboard,
         HardwareType.SuperIO or HardwareType.EmbeddedController => HardwareKind.Controller,
         HardwareType.Network => HardwareKind.Network,
+        HardwareType.Psu => HardwareKind.Psu,
         _ => HardwareKind.Unknown
     };
 

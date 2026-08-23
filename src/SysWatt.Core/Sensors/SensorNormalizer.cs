@@ -25,7 +25,12 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
         new(MetricKind.GpuPower, SensorKind.Power, [HardwareKind.GpuNvidia, HardwareKind.GpuAmd, HardwareKind.GpuIntel], 0, 1500, ["board", "total", "gpu package", "package"], ["core", "rail"]),
         new(MetricKind.MemoryUsage, SensorKind.Load, [HardwareKind.Memory], 0, 100, ["memory", "used"], []),
         new(MetricKind.StorageActivity, SensorKind.Load, [HardwareKind.Storage], 0, 100, ["total activity", "activity"], ["read", "write"]),
+        new(MetricKind.StorageReadRate, SensorKind.Throughput, [HardwareKind.Storage], 0, 1_000_000, ["read rate", "read"], ["write"]),
+        new(MetricKind.StorageWriteRate, SensorKind.Throughput, [HardwareKind.Storage], 0, 1_000_000, ["write rate", "write"], ["read"]),
         new(MetricKind.StorageTemperature, SensorKind.Temperature, [HardwareKind.Storage], -10, 125, ["temperature", "composite"], []),
+        new(MetricKind.StoragePower, SensorKind.Power, [HardwareKind.Storage], 0.01, 500, ["power", "total"], ["limit"]),
+        new(MetricKind.SystemPower, SensorKind.Power, [HardwareKind.Psu, HardwareKind.Ups], 0.01, 100_000,
+            ["input power", "wall power", "total power", "output power", "power"], ["limit", "capacity"]),
         new(MetricKind.FanSpeed, SensorKind.Fan, [HardwareKind.Motherboard, HardwareKind.Controller, HardwareKind.Cpu, HardwareKind.GpuNvidia, HardwareKind.GpuAmd], 0, 20000, ["cpu", "system", "fan"], [])
     ];
 
@@ -51,7 +56,10 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
                     false,
                     winner.Reading.Descriptor.SensorId,
                     $"{winner.Reading.Descriptor.HardwareName} / {winner.Reading.Descriptor.SensorName}",
-                    $"Selected from {winner.Reading.Descriptor.Provider} with ranking score {winner.Score}.");
+                    $"Selected from {winner.Reading.Descriptor.Provider} with ranking score {winner.Score}.")
+                {
+                    SourceProvider = winner.Reading.Descriptor.Provider
+                };
         }
 
         var fans = readings
@@ -60,7 +68,7 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
                 reading => $"{reading.Descriptor.Provider}|{reading.Descriptor.SensorId}",
                 StringComparer.OrdinalIgnoreCase)
             .Select(group => group
-                .OrderByDescending(reading => reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(reading => ProviderPriority(reading.Descriptor.Provider))
                 .First())
             .OrderBy(reading => FanHardwareRank(reading.Descriptor.HardwareKind))
             .ThenBy(reading => reading.Descriptor.HardwareName, StringComparer.OrdinalIgnoreCase)
@@ -132,13 +140,20 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
     private static int Score(RawSensorReading reading, Policy policy)
     {
         var name = NormalizeName($"{reading.Descriptor.SensorName} {reading.Descriptor.SensorId}");
-        var score = reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
+        var score = policy.Metric == MetricKind.StorageActivity && reading.Descriptor.Provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 135
+            : reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
             : reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
+            : reading.Descriptor.Provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 95
             : 50;
         score += policy.Prefer.Select((hint, i) => name.Contains(hint, StringComparison.OrdinalIgnoreCase) ? 40 - (i * 3) : 0).Sum();
         score -= policy.Reject.Count(hint => name.Contains(hint, StringComparison.OrdinalIgnoreCase)) * 35;
         return score;
     }
+
+    private static int ProviderPriority(string provider) => provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 3
+        : provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 2
+        : provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 1
+        : 0;
 
     private static string NormalizeName(string value) => Whitespace().Replace(value.Replace('_', ' ').Replace('-', ' ').ToLowerInvariant(), " ").Trim();
 

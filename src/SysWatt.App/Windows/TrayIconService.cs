@@ -17,7 +17,8 @@ public sealed class TrayIconService : IDisposable
     private Icon? _renderedIcon;
     private AppSettings _settings;
 
-    public event EventHandler? OpenRequested;
+    public event EventHandler? QuickDashboardRequested;
+    public event EventHandler? MainDashboardRequested;
     public event EventHandler? SettingsRequested;
     public event EventHandler? ExitRequested;
     public event EventHandler<bool>? StartupChanged;
@@ -27,7 +28,8 @@ public sealed class TrayIconService : IDisposable
         _monitoring = monitoring;
         _settings = settings;
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Open Dashboard", null, (_, _) => OpenRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Show Quick Dashboard", null, (_, _) => QuickDashboardRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Open Full Dashboard", null, (_, _) => MainDashboardRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add("Settings", null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
         _startupItem = new ToolStripMenuItem("Start with Windows") { Checked = settings.StartWithWindows, CheckOnClick = true };
         _startupItem.CheckedChanged += (_, _) => StartupChanged?.Invoke(this, _startupItem.Checked);
@@ -36,9 +38,10 @@ public sealed class TrayIconService : IDisposable
         menu.Items.Add("Exit", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
         _notifyIcon = new NotifyIcon { ContextMenuStrip = menu, Text = "SysWatt · waiting for sensors", Visible = true };
         SetBrandIcon();
-        _notifyIcon.MouseUp += (_, e) => { if (e.Button == MouseButtons.Left) OpenRequested?.Invoke(this, EventArgs.Empty); };
+        _notifyIcon.MouseUp += (_, e) => { if (e.Button == MouseButtons.Left) QuickDashboardRequested?.Invoke(this, EventArgs.Empty); };
         monitoring.SnapshotUpdated += OnSnapshotUpdated;
         monitoring.AlertTriggered += OnAlertTriggered;
+        monitoring.TelemetryModeChanged += OnTelemetryModeChanged;
     }
 
     private void SetBrandIcon()
@@ -72,7 +75,13 @@ public sealed class TrayIconService : IDisposable
             var cpu = Compact(snapshot, MetricKind.CpuTemperature);
             var gpu = Compact(snapshot, MetricKind.GpuTemperature);
             var watts = Compact(snapshot, MetricKind.EstimatedWallPower);
-            _notifyIcon.Text = Truncate($"SysWatt · Est. wall {watts} · CPU {cpu} · GPU {gpu}", 63);
+            var source = snapshot.Source switch
+            {
+                TelemetrySource.HWiNFOBridge => "HWiNFO",
+                TelemetrySource.FullHardwareAccess => "Hardware",
+                _ => "Standalone"
+            };
+            _notifyIcon.Text = Truncate($"SysWatt · {source} · Wall {watts} · CPU {cpu} · GPU {gpu}", 63);
         });
     }
 
@@ -81,6 +90,14 @@ public sealed class TrayIconService : IDisposable
         if (!alert.Rule.ShowDesktopNotification) return;
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
             _notifyIcon.ShowBalloonTip(5000, $"SysWatt · {alert.Rule.Severity}", alert.Message, ToolTipIcon.Warning));
+    }
+
+    private void OnTelemetryModeChanged(object? sender, SysWatt.Core.Monitoring.TelemetryModeChangedEventArgs change)
+    {
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+            _notifyIcon.ShowBalloonTip(5000, "SysWatt telemetry source", change.Message, change.Current == TelemetrySource.Standalone
+                ? ToolTipIcon.Warning
+                : ToolTipIcon.Info));
     }
 
     private static string Compact(MetricSnapshot snapshot, MetricKind metric) =>
@@ -129,6 +146,7 @@ public sealed class TrayIconService : IDisposable
     {
         _monitoring.SnapshotUpdated -= OnSnapshotUpdated;
         _monitoring.AlertTriggered -= OnAlertTriggered;
+        _monitoring.TelemetryModeChanged -= OnTelemetryModeChanged;
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
         _renderedIcon?.Dispose();
