@@ -40,7 +40,7 @@
           </StackPanel>
           <StackPanel Grid.Row="2" Margin="0,0,0,14">
             <Border Background="#11271F" BorderBrush="#275543" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,10">
-              <StackPanel><TextBlock Text="COLLECTOR STATUS" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold"/><TextBlock Text="●  Native telemetry active" Margin="0,7,0,0" FontSize="11"/><TextBlock Text="No HWiNFO process required" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="14,3,0,0"/></StackPanel>
+              <StackPanel><TextBlock Text="COLLECTOR STATUS" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold"/><TextBlock Text="●  {Binding TelemetrySourceBadge}" Margin="0,7,0,0" FontSize="11"/><TextBlock Text="{Binding TelemetrySourceDetails}" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="14,3,0,0" TextWrapping="Wrap"/></StackPanel>
             </Border>
             <Button Content="Settings" Click="Settings_Click" HorizontalContentAlignment="Left"/>
           </StackPanel>
@@ -52,7 +52,7 @@
           <Grid Margin="24,0,8,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center"><TextBlock Text="System dashboard" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Real-time hardware, activity, and energy intelligence" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,2,0,0"/></StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
-              <TextBlock Text="●" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0"/><TextBlock Text="{Binding UpdatedText}" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center"/>
+              <Border Background="#17382D" CornerRadius="4" Padding="7,4" Margin="0,0,8,0"><TextBlock Text="{Binding TelemetrySourceBadge}" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold"/></Border><TextBlock Text="●" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0"/><TextBlock Text="{Binding UpdatedText}" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center"/>
               <Button x:Name="CustomizeButton" Content="Customize" Margin="18,0,0,0" Click="Customize_Click"/>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal"><Button Content="—" Style="{StaticResource WindowControlButton}" Click="Minimize_Click"/><Button Content="□" Style="{StaticResource WindowControlButton}" Click="Maximize_Click"/><Button Content="×" Style="{StaticResource WindowControlButton}" Click="Close_Click"/></StackPanel>
@@ -62,6 +62,7 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="24,22,24,32">
             <Border Background="#35271B" BorderBrush="#66492C" BorderThickness="1" CornerRadius="7" Padding="11" Margin="0,0,0,12" Visibility="{Binding AlertVisibility}"><TextBlock Text="{Binding ActiveAlert}" Foreground="#FFBE72"/></Border>
+            <Border Background="#1C2934" BorderBrush="#3D617A" BorderThickness="1" CornerRadius="7" Padding="11" Margin="0,0,0,12" Visibility="{Binding TelemetrySourceNoticeVisibility}"><TextBlock Text="{Binding TelemetrySourceNotice}" Foreground="#B8DFFF" FontSize="10" TextWrapping="Wrap"/></Border>
             <Border Background="#18231F" BorderBrush="#2B4C40" BorderThickness="1" CornerRadius="7" Padding="11" Margin="0,0,0,18" Visibility="{Binding SensorAccessVisibility}"><TextBlock Text="{Binding SensorAccessNotice}" Foreground="#C8DDD5" FontSize="10" TextWrapping="Wrap"/></Border>
 
             <StackPanel Visibility="{Binding SystemOverviewVisibility}">

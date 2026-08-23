@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SysWatt.Core.Energy;
+using SysWatt.Core.Sensors;
 
 namespace SysWatt.Infrastructure.Energy;
 
@@ -10,6 +11,7 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
     private bool _initialized;
     private DateTimeOffset? _lastTimestamp;
     private double? _lastWatts;
+    private TelemetrySource? _lastSource;
 
     public string DatabasePath { get; }
 
@@ -24,7 +26,10 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
         DatabasePath = Path.Combine(root, "energy-history.db");
     }
 
-    public async Task RecordSampleAsync(DateTimeOffset timestamp, double watts, CancellationToken cancellationToken = default)
+    public Task RecordSampleAsync(DateTimeOffset timestamp, double watts, CancellationToken cancellationToken = default) =>
+        RecordSampleAsync(timestamp, watts, TelemetrySource.Standalone, cancellationToken);
+
+    public async Task RecordSampleAsync(DateTimeOffset timestamp, double watts, TelemetrySource source, CancellationToken cancellationToken = default)
     {
         if (!double.IsFinite(watts) || watts < 0 || watts > 100_000) return;
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -37,11 +42,12 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
                 if (elapsed > TimeSpan.Zero && elapsed <= TimeSpan.FromMinutes(5))
                 {
                     var wattHours = ((previousWatts + watts) / 2d) * elapsed.TotalHours;
-                    await AddIntervalAsync(timestamp, watts, wattHours, elapsed.TotalHours, cancellationToken).ConfigureAwait(false);
+                    await AddIntervalAsync(timestamp, watts, wattHours, elapsed.TotalHours, _lastSource ?? source, cancellationToken).ConfigureAwait(false);
                 }
             }
             _lastTimestamp = timestamp;
             _lastWatts = watts;
+            _lastSource = source;
         }
         finally { _gate.Release(); }
     }
@@ -71,15 +77,33 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
                 var date = DateOnly.ParseExact(reader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
                 found[date] = new(date, reader.GetDouble(1) / 1000d, reader.GetDouble(2), reader.GetDouble(3));
             }
+            var sourceByDate = new Dictionary<DateOnly, Dictionary<TelemetrySource, double>>();
+            await using (var sourceCommand = connection.CreateCommand())
+            {
+                sourceCommand.CommandText = "SELECT local_date, source, watt_hours FROM daily_energy_source WHERE local_date >= $from AND local_date <= $through";
+                sourceCommand.Parameters.AddWithValue("$from", DateKey(from));
+                sourceCommand.Parameters.AddWithValue("$through", DateKey(through));
+                await using var sourceReader = await sourceCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                while (await sourceReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    var date = DateOnly.ParseExact(sourceReader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    if (!Enum.TryParse<TelemetrySource>(sourceReader.GetString(1), out var source)) continue;
+                    if (!sourceByDate.TryGetValue(date, out var values)) sourceByDate[date] = values = new();
+                    values[source] = sourceReader.GetDouble(2) / 1000d;
+                }
+            }
             var result = new List<DailyEnergySummary>();
             for (var day = from; day <= through; day = day.AddDays(1))
-                result.Add(found.TryGetValue(day, out var value) ? value : new(day, 0, 0, 0));
+            {
+                var value = found.TryGetValue(day, out var summary) ? summary : new(day, 0, 0, 0);
+                result.Add(value with { KilowattHoursBySource = sourceByDate.TryGetValue(day, out var sources) ? sources : new Dictionary<TelemetrySource, double>() });
+            }
             return result;
         }
         finally { _gate.Release(); }
     }
 
-    private async Task AddIntervalAsync(DateTimeOffset timestamp, double watts, double wattHours, double elapsedHours, CancellationToken cancellationToken)
+    private async Task AddIntervalAsync(DateTimeOffset timestamp, double watts, double wattHours, double elapsedHours, TelemetrySource source, CancellationToken cancellationToken)
     {
         await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -123,6 +147,27 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
             minute.Parameters.AddWithValue("$wh", wattHours);
             await minute.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
+        await using (var bySource = connection.CreateCommand())
+        {
+            bySource.Transaction = (SqliteTransaction)transaction;
+            bySource.CommandText = """
+                INSERT INTO daily_energy_source(local_date, source, watt_hours, weighted_watts, duration_hours, average_watts, peak_watts)
+                VALUES($date, $source, $wh, $weighted, $hours, $watts, $watts)
+                ON CONFLICT(local_date, source) DO UPDATE SET
+                  watt_hours = watt_hours + excluded.watt_hours,
+                  weighted_watts = weighted_watts + excluded.weighted_watts,
+                  duration_hours = duration_hours + excluded.duration_hours,
+                  average_watts = (weighted_watts + excluded.weighted_watts) / MAX(duration_hours + excluded.duration_hours, 0.0000001),
+                  peak_watts = MAX(peak_watts, excluded.peak_watts)
+                """;
+            bySource.Parameters.AddWithValue("$date", DateKey(DateOnly.FromDateTime(timestamp.LocalDateTime)));
+            bySource.Parameters.AddWithValue("$source", source.ToString());
+            bySource.Parameters.AddWithValue("$wh", wattHours);
+            bySource.Parameters.AddWithValue("$weighted", wattHours);
+            bySource.Parameters.AddWithValue("$hours", elapsedHours);
+            bySource.Parameters.AddWithValue("$watts", watts);
+            await bySource.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -148,6 +193,16 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
               watt_hours REAL NOT NULL,
               samples INTEGER NOT NULL);
             CREATE INDEX IF NOT EXISTS ix_minute_energy_time ON minute_energy(minute_utc);
+            CREATE TABLE IF NOT EXISTS daily_energy_source(
+              local_date TEXT NOT NULL,
+              source TEXT NOT NULL,
+              watt_hours REAL NOT NULL DEFAULT 0,
+              weighted_watts REAL NOT NULL DEFAULT 0,
+              duration_hours REAL NOT NULL DEFAULT 0,
+              average_watts REAL NOT NULL DEFAULT 0,
+              peak_watts REAL NOT NULL DEFAULT 0,
+              PRIMARY KEY(local_date, source));
+            CREATE INDEX IF NOT EXISTS ix_daily_energy_source_date ON daily_energy_source(local_date);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         _initialized = true;

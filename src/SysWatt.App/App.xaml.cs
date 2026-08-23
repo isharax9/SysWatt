@@ -71,6 +71,7 @@ public partial class App : System.Windows.Application
             builder.Services.AddSingleton<IAlertEvaluator, AlertEvaluator>();
             builder.Services.AddSingleton<ISessionHistory>(_ => new SessionHistory(900));
             builder.Services.AddSingleton<IEnergyHistoryStore, SqliteEnergyHistoryStore>();
+            builder.Services.AddSingleton<IRawSensorProvider, HWiNFOSharedMemoryProvider>();
             builder.Services.AddSingleton<IRawSensorProvider, LibreHardwareMonitorProvider>();
             builder.Services.AddSingleton<IRawSensorProvider, WindowsPerformanceProvider>();
             builder.Services.AddSingleton<IRawSensorProvider, WindowsMemoryProvider>();

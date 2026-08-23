@@ -20,6 +20,8 @@ public sealed class MonitoringService : IMonitoringService
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private AppSettings _settings;
+    private TelemetrySource _lastSource = TelemetrySource.Standalone;
+    private bool _hasSource;
 
     public MetricSnapshot Current { get; private set; } = MetricSnapshot.Empty(DateTimeOffset.UtcNow);
     public IReadOnlyList<RawSensorReading> LastRawReadings { get; private set; } = [];
@@ -27,6 +29,7 @@ public sealed class MonitoringService : IMonitoringService
     public IEnergyHistoryStore EnergyHistory { get; }
     public event EventHandler<MetricSnapshot>? SnapshotUpdated;
     public event EventHandler<AlertEvent>? AlertTriggered;
+    public event EventHandler<TelemetryModeChangedEventArgs>? TelemetryModeChanged;
 
     public MonitoringService(IEnumerable<IRawSensorProvider> providers, ISensorNormalizer normalizer,
         IPowerEstimationService power, IAlertEvaluator alerts, ISessionHistory history, IEnergyHistoryStore energyHistory,
@@ -114,9 +117,27 @@ public sealed class MonitoringService : IMonitoringService
             "SysWatt activity-aware storage model", "Estimated from disk active time, read/write throughput, device count, idle draw, and configured active draw.");
         metrics[MetricKind.EstimatedDcPower] = new(MetricKind.EstimatedDcPower, estimate.EstimatedDcWatts, "W", now, false, null, "SysWatt power model", estimate.Confidence);
         metrics[MetricKind.EstimatedWallPower] = new(MetricKind.EstimatedWallPower, estimate.EstimatedWallWatts, "W", now, false, null, "SysWatt power model", $"{estimate.Confidence} {estimate.Formula}");
-        Current = new MetricSnapshot(now, metrics) { Fans = normalized.Fans };
+        var source = DetermineSource(all);
+        var sourceDiagnostic = DetermineSourceDiagnostic(all, source);
+        Current = new MetricSnapshot(now, metrics)
+        {
+            Fans = normalized.Fans,
+            Source = source,
+            SourceDiagnostic = sourceDiagnostic
+        };
         History.Add(Current);
-        await EnergyHistory.RecordSampleAsync(now, estimate.EstimatedWallWatts, cancellationToken).ConfigureAwait(false);
+        await EnergyHistory.RecordSampleAsync(now, estimate.EstimatedWallWatts, source, cancellationToken).ConfigureAwait(false);
+        if (_hasSource && source != _lastSource)
+        {
+            var message = source == TelemetrySource.HWiNFOBridge
+                ? "HWiNFO Shared Memory connected. SysWatt is using HWiNFO-reported hardware telemetry."
+                : source == TelemetrySource.FullHardwareAccess
+                    ? "HWiNFO Shared Memory unavailable. SysWatt fell back to Full Hardware Access."
+                    : "Low-level hardware telemetry unavailable. SysWatt fell back to Standalone Mode; some power readings are estimated.";
+            TelemetryModeChanged?.Invoke(this, new TelemetryModeChangedEventArgs(_lastSource, source, message));
+        }
+        _lastSource = source;
+        _hasSource = true;
         SnapshotUpdated?.Invoke(this, Current);
         foreach (var alert in _alerts.Evaluate(settings.Alerts, Current)) AlertTriggered?.Invoke(this, alert);
     }
@@ -126,6 +147,34 @@ public sealed class MonitoringService : IMonitoringService
             usage.HasValue
                 ? $"Estimated from {usage:0}% live utilization and the configured idle/peak power envelope."
                 : "Estimated from the configured idle power because no live utilization counter was available.");
+
+    private static TelemetrySource DetermineSource(IReadOnlyList<RawSensorReading> readings)
+    {
+        if (readings.Any(reading => reading.IsAvailable && reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase)))
+            return TelemetrySource.HWiNFOBridge;
+        if (readings.Any(reading => reading.IsAvailable && reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase)))
+            return TelemetrySource.FullHardwareAccess;
+        return TelemetrySource.Standalone;
+    }
+
+    private static string DetermineSourceDiagnostic(IReadOnlyList<RawSensorReading> readings, TelemetrySource source)
+    {
+        if (source == TelemetrySource.HWiNFOBridge)
+            return "HWiNFO Shared Memory · hardware-reported telemetry";
+        if (source == TelemetrySource.FullHardwareAccess)
+        {
+            var bridgeStatus = readings.FirstOrDefault(reading =>
+                reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) && !reading.IsAvailable)?.Error;
+            return bridgeStatus is { Length: > 0 }
+                ? $"SysWatt Full Hardware Access · LibreHardwareMonitor/PawnIO · HWiNFO bridge unavailable"
+                : "SysWatt Full Hardware Access · LibreHardwareMonitor/PawnIO";
+        }
+        var bridge = readings.FirstOrDefault(reading =>
+            reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) && !reading.IsAvailable);
+        return bridge?.Error is { Length: > 0 }
+            ? $"Standalone Mode · {bridge.Error}"
+            : "Standalone Mode · Windows/vendor counters; power may be estimated";
+    }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {

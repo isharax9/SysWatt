@@ -1,6 +1,8 @@
 # Sensor discovery and mapping
 
-SysWatt is self-contained: it embeds LibreHardwareMonitor for low-level hardware discovery and uses Windows APIs for CPU load, memory load, disk active time, and disk read/write throughput. No companion monitoring application is used. LibreHardwareMonitor opens lazily and recursively visits every hardware and sub-hardware node. Raw records retain provider, hardware and sensor identifiers/names/types, unit, timestamp, availability, value, and error context.
+SysWatt uses a hybrid provider model. HWiNFO Shared Memory is an optional bridge for users who want HWiNFO-reported values; LibreHardwareMonitor/PawnIO supplies SysWatt Full Hardware Access when available; Windows APIs keep Standalone Mode useful when neither low-level source is available. Raw records retain provider, hardware and sensor identifiers/names/types, unit, timestamp, availability, value, and error context.
+
+The dashboard and tray popup show the active source. A source transition raises one in-app notice and one tray notification. SQLite stores the source alongside each integrated energy interval so days that span a provider transition remain auditable.
 
 Normalization ranks candidates using all of the following rather than one exact display name:
 
@@ -9,7 +11,7 @@ Normalization ranks candidates using all of the following rather than one exact 
 3. freshness (readings older than five seconds are rejected);
 4. normalized name and identifier hints such as `package`, `total`, `board`, or `core`;
 5. negative hints that avoid core-only, memory, rail, or junction readings for broader metrics;
-6. provider priority, with embedded hardware readings preferred over targeted Windows-native fallbacks;
+6. provider priority, with HWiNFO Bridge preferred over embedded hardware readings, and both preferred over targeted Windows-native fallbacks;
 7. stable identifier ordering for deterministic ties.
 
 The winning normalized reading records its source sensor ID/name and ranking score. Invalid, null, stale, absent, or out-of-range data becomes `N/A`, never zero.

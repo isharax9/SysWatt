@@ -66,6 +66,17 @@ public sealed class SensorNormalizerTests
     }
 
     [Fact]
+    public void HWiNFOBridgeWinsOverEmbeddedAndWindowsCandidates()
+    {
+        var lhm = Reading("lhm", "CPU Package", HardwareKind.Cpu, SensorKind.Power, 32, "LibreHardwareMonitor");
+        var hwinfo = Reading("hwinfo", "CPU Package Power", HardwareKind.Cpu, SensorKind.Power, 28, "HWiNFO Shared Memory");
+        var result = _normalizer.Normalize([lhm, hwinfo], Now)[MetricKind.CpuPower];
+
+        Assert.Equal(28, result.Value);
+        Assert.Equal("HWiNFO Shared Memory", result.SourceProvider);
+    }
+
+    [Fact]
     public void PreservesEveryFreshValidFanAsANamedReading()
     {
         var readings = new[]

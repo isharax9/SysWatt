@@ -15,10 +15,12 @@ public sealed class DiagnosticExporter : IDiagnosticExporter
     {
         var report = new
         {
-            schemaVersion = 2,
+            schemaVersion = 3,
             generatedAtUtc = DateTimeOffset.UtcNow,
             appVersion = typeof(DiagnosticExporter).Assembly.GetName().Version?.ToString(),
             operatingSystem = Environment.OSVersion.VersionString,
+            telemetrySource = normalized.Source,
+            telemetrySourceDiagnostic = normalized.SourceDiagnostic,
             sensors = raw.Select(r => new
             {
                 r.Descriptor.Provider, r.Descriptor.HardwareKind, r.Descriptor.HardwareName,

@@ -16,6 +16,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     private MetricSnapshot _snapshot;
     private AppSettings _settings;
     private string? _activeAlert;
+    private string? _telemetryNotice;
     private DateTime? _selectedEnergyDate = DateTime.Today;
     private DailyEnergySummary _selectedDay = new(DateOnly.FromDateTime(DateTime.Today), 0, 0, 0);
     private double _todayKwh;
@@ -34,10 +35,20 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         _snapshot = monitoring.Current;
         monitoring.SnapshotUpdated += OnSnapshotUpdated;
         monitoring.AlertTriggered += OnAlertTriggered;
+        monitoring.TelemetryModeChanged += OnTelemetryModeChanged;
         _ = RefreshEnergyAsync();
     }
 
     public string UpdatedText => $"LIVE · {_snapshot.Timestamp.ToLocalTime():HH:mm:ss}";
+    public string TelemetrySourceBadge => _snapshot.Source switch
+    {
+        TelemetrySource.HWiNFOBridge => "HWiNFO BRIDGE",
+        TelemetrySource.FullHardwareAccess => "FULL HARDWARE ACCESS",
+        _ => "STANDALONE"
+    };
+    public string TelemetrySourceDetails => _snapshot.SourceDiagnostic;
+    public string TelemetrySourceNotice => _telemetryNotice ?? string.Empty;
+    public Visibility TelemetrySourceNoticeVisibility => string.IsNullOrWhiteSpace(_telemetryNotice) ? Visibility.Collapsed : Visibility.Visible;
     public string CpuUsage => Format(MetricKind.CpuUsage, "0", "%");
     public string CpuTemperature => Format(MetricKind.CpuTemperature, "0", "°C");
     public string CpuPower => FormatPower(MetricKind.CpuPower);
@@ -96,7 +107,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     public string WeekEnergy => $"{_weekKwh:0.00} kWh";
     public string MonthEnergy => $"{_monthKwh:0.00} kWh";
     public string SelectedDayEnergy => $"{_selectedDay.KilowattHours:0.000} kWh";
-    public string SelectedDayDetails => $"Average {_selectedDay.AverageWatts:0} W · peak {_selectedDay.PeakWatts:0} W";
+    public string SelectedDayDetails => $"Average {_selectedDay.AverageWatts:0} W · peak {_selectedDay.PeakWatts:0} W\n{_selectedDay.SourceSummary}";
     public IReadOnlyList<HistoryPoint> DailyEnergyHistory => _dailyEnergyHistory;
     public DateTime? SelectedEnergyDate
     {
@@ -150,9 +161,19 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         return $"{(modeled ? "~" : string.Empty)}{reading.Value.Value:0} W";
     }
 
-    private string SourceLabel(MetricKind kind) => _snapshot[kind].SourceName?.Contains("model", StringComparison.OrdinalIgnoreCase) == true
-        ? "ESTIMATED · UTILIZATION MODEL"
-        : "HARDWARE SENSOR";
+    private string SourceLabel(MetricKind kind)
+    {
+        var reading = _snapshot[kind];
+        if (reading.SourceName?.Contains("model", StringComparison.OrdinalIgnoreCase) == true)
+            return "ESTIMATED · UTILIZATION MODEL";
+        return reading.SourceProvider switch
+        {
+            "HWiNFO Shared Memory" => "HWiNFO BRIDGE · HARDWARE SENSOR",
+            "LibreHardwareMonitor" => "FULL ACCESS · HARDWARE SENSOR",
+            "Windows Native Telemetry" => "STANDALONE · WINDOWS COUNTER",
+            _ => "HARDWARE SENSOR"
+        };
+    }
 
     private string Status(MetricKind kind)
     {
@@ -179,6 +200,16 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
             foreach (var property in typeof(DashboardViewModel).GetProperties().Where(p => p.Name != nameof(ActiveAlert)))
                 OnPropertyChanged(property.Name);
             if (DateTimeOffset.UtcNow - _lastEnergyRefresh > TimeSpan.FromSeconds(15)) _ = RefreshEnergyAsync();
+        });
+    }
+
+    private void OnTelemetryModeChanged(object? sender, SysWatt.Core.Monitoring.TelemetryModeChangedEventArgs change)
+    {
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            _telemetryNotice = change.Message;
+            OnPropertyChanged(nameof(TelemetrySourceNotice));
+            OnPropertyChanged(nameof(TelemetrySourceNoticeVisibility));
         });
     }
 
@@ -266,5 +297,6 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     {
         _monitoring.SnapshotUpdated -= OnSnapshotUpdated;
         _monitoring.AlertTriggered -= OnAlertTriggered;
+        _monitoring.TelemetryModeChanged -= OnTelemetryModeChanged;
     }
 }

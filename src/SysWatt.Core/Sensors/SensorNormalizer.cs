@@ -53,7 +53,10 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
                     false,
                     winner.Reading.Descriptor.SensorId,
                     $"{winner.Reading.Descriptor.HardwareName} / {winner.Reading.Descriptor.SensorName}",
-                    $"Selected from {winner.Reading.Descriptor.Provider} with ranking score {winner.Score}.");
+                    $"Selected from {winner.Reading.Descriptor.Provider} with ranking score {winner.Score}.")
+                {
+                    SourceProvider = winner.Reading.Descriptor.Provider
+                };
         }
 
         var fans = readings
@@ -62,7 +65,7 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
                 reading => $"{reading.Descriptor.Provider}|{reading.Descriptor.SensorId}",
                 StringComparer.OrdinalIgnoreCase)
             .Select(group => group
-                .OrderByDescending(reading => reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(reading => ProviderPriority(reading.Descriptor.Provider))
                 .First())
             .OrderBy(reading => FanHardwareRank(reading.Descriptor.HardwareKind))
             .ThenBy(reading => reading.Descriptor.HardwareName, StringComparer.OrdinalIgnoreCase)
@@ -134,13 +137,19 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
     private static int Score(RawSensorReading reading, Policy policy)
     {
         var name = NormalizeName($"{reading.Descriptor.SensorName} {reading.Descriptor.SensorId}");
-        var score = reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
+        var score = reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
+            : reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
             : reading.Descriptor.Provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 95
             : 50;
         score += policy.Prefer.Select((hint, i) => name.Contains(hint, StringComparison.OrdinalIgnoreCase) ? 40 - (i * 3) : 0).Sum();
         score -= policy.Reject.Count(hint => name.Contains(hint, StringComparison.OrdinalIgnoreCase)) * 35;
         return score;
     }
+
+    private static int ProviderPriority(string provider) => provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 3
+        : provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 2
+        : provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 1
+        : 0;
 
     private static string NormalizeName(string value) => Whitespace().Replace(value.Replace('_', ' ').Replace('-', ' ').ToLowerInvariant(), " ").Trim();
 
