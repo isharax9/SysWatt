@@ -1,13 +1,13 @@
 namespace SysWatt.Core.Sensors;
 
-public enum HardwareKind { Unknown, Cpu, GpuNvidia, GpuAmd, GpuIntel, Memory, Storage, Motherboard, Controller, Network }
+public enum HardwareKind { Unknown, Cpu, GpuNvidia, GpuAmd, GpuIntel, Memory, Storage, Motherboard, Controller, Network, Psu, Ups }
 public enum SensorKind { Unknown, Load, Temperature, Power, Fan, Data, Throughput, Clock, Voltage, Control }
-public enum TelemetrySource { Standalone, FullHardwareAccess, HWiNFOBridge }
+public enum TelemetrySource { Standalone, FullHardwareAccess, HWiNFOBridge, HybridModel, Imported }
 public enum MetricKind
 {
     CpuUsage, CpuTemperature, CpuPower, GpuUsage, GpuTemperature, GpuPower,
     MemoryUsage, StorageActivity, StorageReadRate, StorageWriteRate, StorageTemperature, StoragePower, FanSpeed,
-    EstimatedDcPower, EstimatedWallPower
+    SystemPower, EstimatedDcPower, EstimatedWallPower, BaseSystemPower, CoolingPower, ExternalPower
 }
 
 public sealed record SensorDescriptor(
@@ -75,7 +75,7 @@ public static class MetricUnits
         MetricKind.CpuUsage or MetricKind.GpuUsage or MetricKind.MemoryUsage or MetricKind.StorageActivity => "%",
         MetricKind.StorageReadRate or MetricKind.StorageWriteRate => "MB/s",
         MetricKind.CpuTemperature or MetricKind.GpuTemperature or MetricKind.StorageTemperature => "°C",
-        MetricKind.CpuPower or MetricKind.GpuPower or MetricKind.StoragePower or MetricKind.EstimatedDcPower or MetricKind.EstimatedWallPower => "W",
+        MetricKind.CpuPower or MetricKind.GpuPower or MetricKind.StoragePower or MetricKind.SystemPower or MetricKind.EstimatedDcPower or MetricKind.EstimatedWallPower or MetricKind.BaseSystemPower or MetricKind.CoolingPower or MetricKind.ExternalPower => "W",
         MetricKind.FanSpeed => "RPM",
         _ => string.Empty
     };

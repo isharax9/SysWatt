@@ -55,11 +55,17 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly IStartupRegistrationService _startup;
     private readonly IMonitoringService _monitoring;
     private MetricKind _trayMetric;
+    private AppTheme _theme;
     private bool _startWithWindows;
     private bool _startMinimized;
+    private int _graphWindowMinutes;
+    private int _alertBannerSeconds;
+    private int _pollingIntervalMilliseconds;
     private double _baseWatts;
     private double _storageWatts;
     private int _fanCount;
+    private int _cpuCoolerFanCount;
+    private int _caseFanCount;
     private double _wattsPerFan;
     private double _otherCoolingWatts;
     private double _usbPeripheralWatts;
@@ -74,6 +80,12 @@ public sealed class SettingsViewModel : ViewModelBase
     private int _storageDeviceCount;
     private double _storageIdleWattsPerDevice;
     private double _storageThroughputCeilingMBps;
+    private bool _autoDetectStorage;
+    private bool _autoDetectCooling;
+    private bool _autoDetectDisplays;
+    private int _displayCount;
+    private bool _autoDetectRemovablePeripherals;
+    private double _wattsPerDetectedPeripheral;
     private readonly DashboardLayoutSettings _dashboardLayout;
     private readonly bool _trayDashboardPinned;
     private string _accentColor;
@@ -82,16 +94,23 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public event EventHandler<AppSettings>? Saved;
     public event EventHandler? RequestClose;
-    public Array TrayMetricChoices { get; } = new[] { MetricKind.EstimatedWallPower, MetricKind.EstimatedDcPower, MetricKind.CpuTemperature, MetricKind.GpuTemperature, MetricKind.CpuUsage, MetricKind.GpuUsage };
+    public Array TrayMetricChoices { get; } = new[] { MetricKind.EstimatedWallPower, MetricKind.EstimatedDcPower, MetricKind.CpuPower, MetricKind.GpuPower, MetricKind.CpuTemperature, MetricKind.GpuTemperature, MetricKind.CpuUsage, MetricKind.GpuUsage };
+    public Array ThemeChoices { get; } = Enum.GetValues<AppTheme>();
     public ObservableCollection<AlertRuleViewModel> Alerts { get; }
     public MetricKind TrayMetric { get => _trayMetric; set => Set(ref _trayMetric, value); }
+    public AppTheme Theme { get => _theme; set => Set(ref _theme, value); }
     public bool StartWithWindows { get => _startWithWindows; set => Set(ref _startWithWindows, value); }
     public bool StartMinimized { get => _startMinimized; set => Set(ref _startMinimized, value); }
+    public int GraphWindowMinutes { get => _graphWindowMinutes; set => Set(ref _graphWindowMinutes, value); }
+    public int AlertBannerSeconds { get => _alertBannerSeconds; set => Set(ref _alertBannerSeconds, value); }
     public double BaseWatts { get => _baseWatts; set => Set(ref _baseWatts, value); }
     public double StorageWatts { get => _storageWatts; set => Set(ref _storageWatts, value); }
-    public int FanCount { get => _fanCount; set => Set(ref _fanCount, value); }
-    public double WattsPerFan { get => _wattsPerFan; set => Set(ref _wattsPerFan, value); }
-    public double OtherCoolingWatts { get => _otherCoolingWatts; set => Set(ref _otherCoolingWatts, value); }
+    public int FanCount { get => _fanCount; set { if (Set(ref _fanCount, value)) OnPropertyChanged(nameof(CoolingRatedPower)); } }
+    public int CpuCoolerFanCount { get => _cpuCoolerFanCount; set { if (Set(ref _cpuCoolerFanCount, value)) UpdateTotalFanCount(); } }
+    public int CaseFanCount { get => _caseFanCount; set { if (Set(ref _caseFanCount, value)) UpdateTotalFanCount(); } }
+    public double WattsPerFan { get => _wattsPerFan; set { if (Set(ref _wattsPerFan, value)) OnPropertyChanged(nameof(CoolingRatedPower)); } }
+    public double OtherCoolingWatts { get => _otherCoolingWatts; set { if (Set(ref _otherCoolingWatts, value)) OnPropertyChanged(nameof(CoolingRatedPower)); } }
+    public string CoolingRatedPower => $"{Math.Max(0, FanCount * WattsPerFan + OtherCoolingWatts):0.0} W rated maximum";
     public double UsbPeripheralWatts { get => _usbPeripheralWatts; set => Set(ref _usbPeripheralWatts, value); }
     public double DisplayWatts { get => _displayWatts; set => Set(ref _displayWatts, value); }
     public double ExternalPeripheralWatts { get => _externalPeripheralWatts; set => Set(ref _externalPeripheralWatts, value); }
@@ -104,6 +123,12 @@ public sealed class SettingsViewModel : ViewModelBase
     public int StorageDeviceCount { get => _storageDeviceCount; set => Set(ref _storageDeviceCount, value); }
     public double StorageIdleWattsPerDevice { get => _storageIdleWattsPerDevice; set => Set(ref _storageIdleWattsPerDevice, value); }
     public double StorageThroughputCeilingMBps { get => _storageThroughputCeilingMBps; set => Set(ref _storageThroughputCeilingMBps, value); }
+    public bool AutoDetectStorage { get => _autoDetectStorage; set => Set(ref _autoDetectStorage, value); }
+    public bool AutoDetectCooling { get => _autoDetectCooling; set => Set(ref _autoDetectCooling, value); }
+    public bool AutoDetectDisplays { get => _autoDetectDisplays; set => Set(ref _autoDetectDisplays, value); }
+    public int DisplayCount { get => _displayCount; set => Set(ref _displayCount, value); }
+    public bool AutoDetectRemovablePeripherals { get => _autoDetectRemovablePeripherals; set => Set(ref _autoDetectRemovablePeripherals, value); }
+    public double WattsPerDetectedPeripheral { get => _wattsPerDetectedPeripheral; set => Set(ref _wattsPerDetectedPeripheral, value); }
     public string AccentColor { get => _accentColor; set => Set(ref _accentColor, value); }
     public AlertRuleViewModel? SelectedAlert { get => _selectedAlert; set => Set(ref _selectedAlert, value); }
     public string? Error { get => _error; private set => Set(ref _error, value); }
@@ -116,9 +141,13 @@ public sealed class SettingsViewModel : ViewModelBase
     public SettingsViewModel(AppSettings settings, ISettingsStore store, IStartupRegistrationService startup, IMonitoringService monitoring)
     {
         _store = store; _startup = startup; _monitoring = monitoring;
-        _trayMetric = settings.TrayMetric; _startWithWindows = settings.StartWithWindows;
+        _trayMetric = settings.TrayMetric; _theme = settings.Theme; _startWithWindows = settings.StartWithWindows;
         _startMinimized = settings.StartMinimized; _baseWatts = settings.Power.BaseSystemWatts;
+        _graphWindowMinutes = settings.GraphWindowMinutes; _alertBannerSeconds = settings.AlertBannerSeconds;
+        _pollingIntervalMilliseconds = settings.PollingIntervalMilliseconds;
         _storageWatts = settings.Power.StorageWatts; _fanCount = settings.Power.FanCount;
+        _cpuCoolerFanCount = settings.Power.FanCount > 0 ? 1 : 0;
+        _caseFanCount = Math.Max(0, settings.Power.FanCount - _cpuCoolerFanCount);
         _wattsPerFan = settings.Power.WattsPerFan; _otherCoolingWatts = settings.Power.OtherCoolingWatts;
         _usbPeripheralWatts = settings.Power.UsbPeripheralWatts; _displayWatts = settings.Power.DisplayWatts;
         _externalPeripheralWatts = settings.Power.ExternalPeripheralWatts; _otherWallWatts = settings.Power.OtherWallWatts;
@@ -127,6 +156,10 @@ public sealed class SettingsViewModel : ViewModelBase
         _gpuIdleWatts = settings.Power.GpuIdleWatts; _gpuPeakWatts = settings.Power.GpuPeakWatts;
         _storageDeviceCount = settings.Power.StorageDeviceCount; _storageIdleWattsPerDevice = settings.Power.StorageIdleWattsPerDevice;
         _storageThroughputCeilingMBps = settings.Power.StorageThroughputCeilingMBps;
+        _autoDetectStorage = settings.Power.AutoDetectStorage; _autoDetectCooling = settings.Power.AutoDetectCooling;
+        _autoDetectDisplays = settings.Power.AutoDetectDisplays; _displayCount = settings.Power.DisplayCount;
+        _autoDetectRemovablePeripherals = settings.Power.AutoDetectRemovablePeripherals;
+        _wattsPerDetectedPeripheral = settings.Power.WattsPerDetectedPeripheral;
         _dashboardLayout = settings.Dashboard; _trayDashboardPinned = settings.TrayDashboardPinned;
         Alerts = new(settings.Alerts.Select(a => new AlertRuleViewModel(a)));
         AddAlertCommand = new(() => { var row = new AlertRuleViewModel(AlertRule.CreateDefault() with { Name = "New alert" }); Alerts.Add(row); SelectedAlert = row; });
@@ -161,7 +194,13 @@ public sealed class SettingsViewModel : ViewModelBase
             GpuPeakWatts,
             StorageDeviceCount,
             StorageIdleWattsPerDevice,
-            StorageThroughputCeilingMBps);
+            StorageThroughputCeilingMBps,
+            AutoDetectStorage,
+            AutoDetectCooling,
+            AutoDetectDisplays,
+            DisplayCount,
+            AutoDetectRemovablePeripherals,
+            WattsPerDetectedPeripheral);
         var validation = power.Validate().ToList();
         if (Alerts.Any(a => string.IsNullOrWhiteSpace(a.Name))) validation.Add("Every alert needs a name.");
         if (Alerts.Any(a => a.DurationSeconds < 0 || a.CooldownSeconds < 0)) validation.Add("Alert duration and cooldown cannot be negative.");
@@ -171,6 +210,9 @@ public sealed class SettingsViewModel : ViewModelBase
             var settings = new AppSettings
             {
                 TrayMetric = TrayMetric, StartWithWindows = StartWithWindows, StartMinimized = StartMinimized,
+                Theme = Theme,
+                GraphWindowMinutes = GraphWindowMinutes, AlertBannerSeconds = AlertBannerSeconds,
+                PollingIntervalMilliseconds = _pollingIntervalMilliseconds,
                 TrayDashboardPinned = _trayDashboardPinned, Dashboard = _dashboardLayout,
                 Power = power, AccentColor = AccentColor, Alerts = Alerts.Select(a => a.ToModel()).ToList()
             }.Sanitize();
@@ -181,5 +223,11 @@ public sealed class SettingsViewModel : ViewModelBase
             RequestClose?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex) { Error = $"Settings could not be saved: {ex.Message}"; }
+    }
+
+    private void UpdateTotalFanCount()
+    {
+        FanCount = Math.Max(0, CpuCoolerFanCount) + Math.Max(0, CaseFanCount);
+        OnPropertyChanged(nameof(CoolingRatedPower));
     }
 }

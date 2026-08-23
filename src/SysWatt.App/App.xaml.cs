@@ -1,4 +1,6 @@
 using System.IO;
+using System.Diagnostics;
+using System.ComponentModel;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SysWatt.App.ViewModels;
 using SysWatt.App.Views;
 using SysWatt.App.Windows;
+using SysWatt.App.Theming;
 using SysWatt.Core.Alerts;
 using SysWatt.Core.History;
 using SysWatt.Core.Energy;
@@ -31,6 +34,7 @@ public partial class App : System.Windows.Application
     private DashboardWindow? _dashboard;
     private TrayDashboardWindow? _trayDashboard;
     private SettingsWindow? _settingsWindow;
+    private AboutWindow? _aboutWindow;
     private AppSettings _settings = new();
     private bool _exiting;
 
@@ -39,11 +43,15 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
         var isSettingsPreview = e.Args.Any(a => a.Equals("--preview-settings", StringComparison.OrdinalIgnoreCase));
         var isDashboardPreview = e.Args.Any(a => a.Equals("--preview-dashboard", StringComparison.OrdinalIgnoreCase));
+        var isTrayPreview = e.Args.Any(a => a.Equals("--preview-tray", StringComparison.OrdinalIgnoreCase));
+        var isLightPreview = e.Args.Any(a => a.Equals("--preview-light", StringComparison.OrdinalIgnoreCase));
         var isSmokeTest = e.Args.Any(a => a.Equals("--smoke-test", StringComparison.OrdinalIgnoreCase));
         var sensorDiagnosticArgument = Array.FindIndex(e.Args, a => a.Equals("--diagnose-sensors", StringComparison.OrdinalIgnoreCase));
         var isSensorDiagnostic = sensorDiagnosticArgument >= 0;
+        if (isSensorDiagnostic) ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var instanceDiscriminator = isSettingsPreview ? "SettingsPreview"
             : isDashboardPreview ? "DashboardPreview"
+            : isTrayPreview ? "TrayPreview"
             : isSmokeTest ? "SmokeTest"
             : isSensorDiagnostic ? "SensorDiagnostic"
             : null;
@@ -60,6 +68,9 @@ public partial class App : System.Windows.Application
         {
             var settingsStore = new JsonSettingsStore(NullLogger<JsonSettingsStore>.Instance);
             _settings = await settingsStore.LoadAsync();
+            if (isLightPreview) _settings = _settings with { Theme = AppTheme.Light };
+            if (isTrayPreview) _settings = _settings with { TrayDashboardPinned = true };
+            ThemeManager.Apply(_settings.Theme);
 
             var builder = Host.CreateApplicationBuilder();
             builder.Logging.ClearProviders();
@@ -68,8 +79,9 @@ public partial class App : System.Windows.Application
             builder.Services.AddSingleton(_settings);
             builder.Services.AddSingleton<ISensorNormalizer, SensorNormalizer>();
             builder.Services.AddSingleton<IPowerEstimationService, PowerEstimationService>();
+            builder.Services.AddSingleton<IHardwareInventoryService, WindowsHardwareInventoryService>();
             builder.Services.AddSingleton<IAlertEvaluator, AlertEvaluator>();
-            builder.Services.AddSingleton<ISessionHistory>(_ => new SessionHistory(900));
+            builder.Services.AddSingleton<ISessionHistory>(_ => new SessionHistory(14_400));
             builder.Services.AddSingleton<IEnergyHistoryStore, SqliteEnergyHistoryStore>();
             builder.Services.AddSingleton<IRawSensorProvider, HWiNFOSharedMemoryProvider>();
             builder.Services.AddSingleton<IRawSensorProvider, LibreHardwareMonitorProvider>();
@@ -103,10 +115,12 @@ public partial class App : System.Windows.Application
             }
 
             var dashboardViewModel = _host.Services.GetRequiredService<DashboardViewModel>();
-            dashboardViewModel.SettingsChanged += (_, settings) => { _settings = settings; _tray?.ApplySettings(settings); };
+            dashboardViewModel.SettingsChanged += (_, settings) => { _settings = settings; ThemeManager.Apply(settings.Theme); _tray?.ApplySettings(settings); };
             _dashboard = new DashboardWindow { DataContext = dashboardViewModel };
             _trayDashboard = new TrayDashboardWindow { DataContext = dashboardViewModel };
             _dashboard.SettingsRequested += (_, _) => OpenSettings();
+            _dashboard.AboutRequested += (_, _) => OpenAbout();
+            _dashboard.RestartElevatedRequested += async (_, _) => await RestartElevatedAsync();
             _trayDashboard.OpenFullDashboardRequested += (_, _) => _dashboard.ShowDashboard();
             _tray = new TrayIconService(monitoring, _settings);
             _tray.QuickDashboardRequested += (_, _) => _trayDashboard.ToggleNearTray();
@@ -119,6 +133,14 @@ public partial class App : System.Windows.Application
 
             if (isSmokeTest)
             {
+                var smokeSettingsViewModel = new SettingsViewModel(_settings,
+                    _host.Services.GetRequiredService<ISettingsStore>(),
+                    _host.Services.GetRequiredService<IStartupRegistrationService>(),
+                    monitoring);
+                var smokeSettingsWindow = new SettingsWindow(smokeSettingsViewModel);
+                smokeSettingsWindow.Close();
+                var smokeAboutWindow = new AboutWindow();
+                smokeAboutWindow.Close();
                 await Task.Delay(2500);
                 await ExitAsync();
                 return;
@@ -136,6 +158,13 @@ public partial class App : System.Windows.Application
             if (isDashboardPreview)
             {
                 _dashboard.ShowDashboard();
+                await Task.Delay(15000);
+                await ExitAsync();
+                return;
+            }
+            if (isTrayPreview)
+            {
+                _trayDashboard.ToggleNearTray();
                 await Task.Delay(15000);
                 await ExitAsync();
                 return;
@@ -167,6 +196,7 @@ public partial class App : System.Windows.Application
         viewModel.Saved += (_, settings) =>
         {
             _settings = settings;
+            ThemeManager.Apply(settings.Theme);
             _tray?.ApplySettings(settings);
             _host.Services.GetRequiredService<DashboardViewModel>().ApplySettings(settings);
         };
@@ -176,6 +206,31 @@ public partial class App : System.Windows.Application
         _settingsWindow.ExportDiagnosticsRequested += async (_, _) => await ExportDiagnosticsAsync();
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
+    }
+
+    private void OpenAbout()
+    {
+        if (_dashboard is null) return;
+        if (_aboutWindow is { IsVisible: true }) { _aboutWindow.Activate(); return; }
+        _aboutWindow = new AboutWindow { Owner = _dashboard };
+        _aboutWindow.Closed += (_, _) => _aboutWindow = null;
+        _aboutWindow.Show();
+    }
+
+    private async Task RestartElevatedAsync()
+    {
+        var executable = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executable)) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = executable, UseShellExecute = true, Verb = "runas" });
+            await ExitAsync();
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) { }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"SysWatt could not restart with administrator access.\n\n{ex.Message}", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private async Task ExportDiagnosticsAsync()
@@ -224,6 +279,7 @@ public partial class App : System.Windows.Application
         try
         {
             _settingsWindow?.Close();
+            _aboutWindow?.Close();
             _trayDashboard?.CloseForExit();
             _dashboard?.CloseForExit();
             _tray?.Dispose();

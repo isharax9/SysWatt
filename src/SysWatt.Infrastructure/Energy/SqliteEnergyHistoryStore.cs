@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SysWatt.Core.Energy;
 using SysWatt.Core.Sensors;
@@ -75,7 +76,7 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var date = DateOnly.ParseExact(reader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                found[date] = new(date, reader.GetDouble(1) / 1000d, reader.GetDouble(2), reader.GetDouble(3));
+                found[date] = new(date, reader.GetDouble(1) / 1000d, reader.GetDouble(2), reader.GetDouble(3)) { HasData = true };
             }
             var sourceByDate = new Dictionary<DateOnly, Dictionary<TelemetrySource, double>>();
             await using (var sourceCommand = connection.CreateCommand())
@@ -101,6 +102,91 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
             return result;
         }
         finally { _gate.Release(); }
+    }
+
+    public async Task ExportAsync(string destinationPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+            await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+            var days = new List<EnergyArchiveDay>();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT local_date, watt_hours, average_watts, peak_watts FROM daily_energy ORDER BY local_date";
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                days.Add(new(reader.GetString(0), reader.GetDouble(1), reader.GetDouble(2), reader.GetDouble(3)));
+
+            var archive = new EnergyArchive(1, DateTimeOffset.UtcNow, days);
+            var directory = Path.GetDirectoryName(Path.GetFullPath(destinationPath));
+            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
+            await using var stream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await JsonSerializer.SerializeAsync(stream, archive, ArchiveJson, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<int> ImportAsync(string sourcePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        await using var stream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var archive = await JsonSerializer.DeserializeAsync<EnergyArchive>(stream, ArchiveJson, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidDataException("The energy archive is empty.");
+        if (archive.Version != 1) throw new InvalidDataException($"Energy archive version {archive.Version} is not supported.");
+        var valid = archive.Days.Select(ValidateArchiveDay).ToArray();
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+            await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var day in valid)
+            {
+                await using var command = connection.CreateCommand();
+                command.Transaction = (SqliteTransaction)transaction;
+                command.CommandText = """
+                    INSERT INTO daily_energy(local_date, watt_hours, weighted_watts, duration_hours, average_watts, peak_watts)
+                    VALUES($date, $wh, $weighted, $hours, $average, $peak)
+                    ON CONFLICT(local_date) DO UPDATE SET
+                      watt_hours = excluded.watt_hours,
+                      weighted_watts = excluded.weighted_watts,
+                      duration_hours = excluded.duration_hours,
+                      average_watts = excluded.average_watts,
+                      peak_watts = excluded.peak_watts;
+                    DELETE FROM daily_energy_source WHERE local_date = $date;
+                    INSERT INTO daily_energy_source(local_date, source, watt_hours, weighted_watts, duration_hours, average_watts, peak_watts)
+                    VALUES($date, 'Imported', $wh, $weighted, $hours, $average, $peak);
+                    """;
+                var hours = day.AverageWatts > 0 ? day.WattHours / day.AverageWatts : 0;
+                command.Parameters.AddWithValue("$date", day.Date);
+                command.Parameters.AddWithValue("$wh", day.WattHours);
+                command.Parameters.AddWithValue("$weighted", day.WattHours);
+                command.Parameters.AddWithValue("$hours", hours);
+                command.Parameters.AddWithValue("$average", day.AverageWatts);
+                command.Parameters.AddWithValue("$peak", day.PeakWatts);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            _lastTimestamp = null;
+            _lastWatts = null;
+            _lastSource = null;
+            return valid.Length;
+        }
+        finally { _gate.Release(); }
+    }
+
+    private static EnergyArchiveDay ValidateArchiveDay(EnergyArchiveDay day)
+    {
+        if (!DateOnly.TryParseExact(day.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            throw new InvalidDataException($"Invalid archive date: {day.Date}");
+        if (!double.IsFinite(day.WattHours) || day.WattHours is < 0 or > 2_400_000 ||
+            !double.IsFinite(day.AverageWatts) || day.AverageWatts is < 0 or > 100_000 ||
+            !double.IsFinite(day.PeakWatts) || day.PeakWatts is < 0 or > 100_000)
+            throw new InvalidDataException($"Invalid energy values for {day.Date}.");
+        return day;
     }
 
     private async Task AddIntervalAsync(DateTimeOffset timestamp, double watts, double wattHours, double elapsedHours, TelemetrySource source, CancellationToken cancellationToken)
@@ -221,6 +307,10 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
     }
 
     private static string DateKey(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static readonly JsonSerializerOptions ArchiveJson = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
+    private sealed record EnergyArchive(int Version, DateTimeOffset ExportedAt, IReadOnlyList<EnergyArchiveDay> Days);
+    private sealed record EnergyArchiveDay(string Date, double WattHours, double AverageWatts, double PeakWatts);
 
     public ValueTask DisposeAsync()
     {

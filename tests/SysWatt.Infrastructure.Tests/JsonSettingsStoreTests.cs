@@ -26,7 +26,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         await File.WriteAllTextAsync(store.SettingsPath, "{nope", TestContext.Current.CancellationToken);
         var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(4, loaded.SchemaVersion);
+        Assert.Equal(6, loaded.SchemaVersion);
         Assert.Single(Directory.GetFiles(_directory, "*.invalid-*"));
     }
 
@@ -45,7 +45,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
         var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(4, loaded.SchemaVersion);
+        Assert.Equal(6, loaded.SchemaVersion);
         Assert.Equal(45, loaded.Power.PcAuxiliaryWatts);
         Assert.Equal(0, loaded.Power.ExternalAcWatts);
     }
@@ -68,7 +68,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         var migratedDefault = await defaultStore.LoadAsync(TestContext.Current.CancellationToken);
         var migratedCustom = await customStore.LoadAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(4, migratedDefault.SchemaVersion);
+        Assert.Equal(6, migratedDefault.SchemaVersion);
         Assert.Equal(22, migratedDefault.Power.CpuIdleWatts);
         Assert.Equal(27, migratedCustom.Power.CpuIdleWatts);
     }

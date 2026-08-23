@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Security.Principal;
 using SysWatt.Core.Energy;
 using SysWatt.Core.History;
 using SysWatt.Core.Monitoring;
@@ -22,8 +23,12 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     private double _todayKwh;
     private double _weekKwh;
     private double _monthKwh;
+    private bool _todayHasData;
+    private bool _rangeHasData;
     private DateTimeOffset _lastEnergyRefresh;
     private IReadOnlyList<HistoryPoint> _dailyEnergyHistory = [];
+    private CancellationTokenSource? _alertDismissal;
+    private CancellationTokenSource? _telemetryNoticeDismissal;
 
     public event EventHandler<AppSettings>? SettingsChanged;
 
@@ -73,6 +78,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     public string FanSummary => _snapshot.Fans.Count == 0
         ? "No RPM header exposed by this board"
         : $"{_snapshot.Fans.Count} live channel{(_snapshot.Fans.Count == 1 ? string.Empty : "s")}";
+    public bool IsAdministrator => new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
     public string SensorAccessNotice
     {
         get
@@ -81,34 +87,67 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
                 reading.Descriptor.SensorId.Equals("/librehardwaremonitor/pawnio-missing", StringComparison.OrdinalIgnoreCase));
             var missing = new List<string>();
             if (!_snapshot[MetricKind.CpuTemperature].IsAvailable) missing.Add("CPU temperature");
+            if (!_snapshot[MetricKind.CpuPower].IsAvailable || _snapshot[MetricKind.CpuPower].SourceProvider == "SysWatt calculated model") missing.Add("exact CPU package power");
             if (!_snapshot[MetricKind.GpuTemperature].IsAvailable) missing.Add("GPU temperature");
+            if (!_snapshot[MetricKind.GpuPower].IsAvailable || _snapshot[MetricKind.GpuPower].SourceProvider == "SysWatt calculated model") missing.Add("exact GPU board power");
             if (_snapshot.Fans.Count == 0) missing.Add("fan RPM");
-            if (lowLevelAccess is not null && missing.Any(item => item.StartsWith("CPU", StringComparison.OrdinalIgnoreCase)))
-                return $"{lowLevelAccess.Error} Modeled CPU watts are shown with a ~ prefix and should be calibrated against a trusted package-power reading.";
+            if (missing.Count > 0 && !IsAdministrator)
+                return $"Hardware access is restricted in this session. Missing: {string.Join(", ", missing)}. Restart SysWatt as administrator to let the Ryzen/board sensor provider access privileged telemetry. Values remain N/A until a hardware sensor succeeds.";
+            if (lowLevelAccess is not null && missing.Any(item => item.Contains("CPU", StringComparison.OrdinalIgnoreCase)))
+                return $"{lowLevelAccess.Error} Exact sensor values remain N/A; modeled totals are explicitly marked calculated.";
             return missing.Count == 0
                 ? string.Empty
-                : $"Native collection is active. Your firmware does not expose: {string.Join(", ", missing)}. Power still uses the SysWatt utilization model; temperature and RPM cannot be inferred safely.";
+                : $"Full hardware access is active, but this hardware/firmware did not expose: {string.Join(", ", missing)}. Exact readings remain N/A and calculated values are labeled separately.";
         }
     }
     public Visibility SensorAccessVisibility => string.IsNullOrEmpty(SensorAccessNotice) ? Visibility.Collapsed : Visibility.Visible;
-    public string EstimatedDcPower => Format(MetricKind.EstimatedDcPower, "0", " W");
-    public string EstimatedWallPower => Format(MetricKind.EstimatedWallPower, "0", " W");
-    public string EstimateStatus => _snapshot[MetricKind.EstimatedWallPower].Explanation ?? "Waiting for the first sample…";
+    public string SystemPower => FormatPower(MetricKind.EstimatedWallPower);
+    public string DcPower => FormatPower(MetricKind.EstimatedDcPower);
+    public string SystemPowerStatus => Status(MetricKind.EstimatedWallPower);
+    public string StorageCoolingBoardPower
+    {
+        get
+        {
+            var values = new[] { _snapshot.Value(MetricKind.StoragePower), _snapshot.Value(MetricKind.CoolingPower), _snapshot.Value(MetricKind.BaseSystemPower) };
+            return $"{values.Where(value => value.HasValue).Sum(value => value!.Value):0} W";
+        }
+    }
+    public string MonitorsPeripheralPower => FormatPower(MetricKind.ExternalPower);
+    public string MeasuredComponentPower
+    {
+        get
+        {
+            var values = new[] { _snapshot.Value(MetricKind.CpuPower), _snapshot.Value(MetricKind.GpuPower), _snapshot.Value(MetricKind.StoragePower) };
+            var measured = values.Where(value => value.HasValue).Select(value => value!.Value).ToArray();
+            return measured.Length == 0 ? "N/A" : $"{measured.Sum():0} W";
+        }
+    }
+    public string EstimateStatus => SystemPowerStatus;
     public string? ActiveAlert { get => _activeAlert; private set => Set(ref _activeAlert, value); }
     public Visibility AlertVisibility => string.IsNullOrEmpty(ActiveAlert) ? Visibility.Collapsed : Visibility.Visible;
-    public IReadOnlyList<HistoryPoint> CpuUsageHistory => _monitoring.History.Get(MetricKind.CpuUsage);
-    public IReadOnlyList<HistoryPoint> CpuTemperatureHistory => _monitoring.History.Get(MetricKind.CpuTemperature);
-    public IReadOnlyList<HistoryPoint> GpuUsageHistory => _monitoring.History.Get(MetricKind.GpuUsage);
-    public IReadOnlyList<HistoryPoint> GpuTemperatureHistory => _monitoring.History.Get(MetricKind.GpuTemperature);
-    public IReadOnlyList<HistoryPoint> StorageActivityHistory => _monitoring.History.Get(MetricKind.StorageActivity);
-    public IReadOnlyList<HistoryPoint> PowerHistory => _monitoring.History.Get(MetricKind.EstimatedWallPower);
+    public IReadOnlyList<HistoryPoint> CpuUsageHistory => Window(MetricKind.CpuUsage);
+    public IReadOnlyList<HistoryPoint> CpuPowerHistory => Window(MetricKind.CpuPower);
+    public IReadOnlyList<HistoryPoint> CpuTemperatureHistory => Window(MetricKind.CpuTemperature);
+    public IReadOnlyList<HistoryPoint> GpuUsageHistory => Window(MetricKind.GpuUsage);
+    public IReadOnlyList<HistoryPoint> GpuPowerHistory => Window(MetricKind.GpuPower);
+    public IReadOnlyList<HistoryPoint> GpuTemperatureHistory => Window(MetricKind.GpuTemperature);
+    public IReadOnlyList<HistoryPoint> StorageActivityHistory => Window(MetricKind.StorageActivity);
+    public IReadOnlyList<HistoryPoint> PowerHistory => Window(MetricKind.EstimatedWallPower);
+    public string GraphWindowLabel => $"{_settings.GraphWindowMinutes}-minute rolling window · {_settings.PollingIntervalMilliseconds / 1000d:0.#}-second samples";
 
-    public string TodayEnergy => $"{_todayKwh:0.000} kWh";
-    public string WeekEnergy => $"{_weekKwh:0.00} kWh";
-    public string MonthEnergy => $"{_monthKwh:0.00} kWh";
-    public string SelectedDayEnergy => $"{_selectedDay.KilowattHours:0.000} kWh";
-    public string SelectedDayDetails => $"Average {_selectedDay.AverageWatts:0} W · peak {_selectedDay.PeakWatts:0} W\n{_selectedDay.SourceSummary}";
+    public string TodayEnergy => _todayHasData ? $"{_todayKwh:0.000} kWh" : "N/A";
+    public string WeekEnergy => _rangeHasData ? $"{_weekKwh:0.000} kWh" : "N/A";
+    public string MonthEnergy => _rangeHasData ? $"{_monthKwh:0.000} kWh" : "N/A";
+    public string SelectedDayEnergy => _selectedDay.HasData ? $"{_selectedDay.KilowattHours:0.000} kWh" : "N/A";
+    public string SelectedDayDetails => _selectedDay.HasData
+        ? $"Average {_selectedDay.AverageWatts:0} W · peak {_selectedDay.PeakWatts:0} W\n{_selectedDay.SourceSummary}"
+        : "No hybrid wall-power samples were recorded for this day.";
+    public string EnergyMeasurementNotice => _snapshot[MetricKind.EstimatedWallPower].IsAvailable
+        ? "Energy accumulation is active from the hybrid wall-power model. Exact CPU/GPU sensors are preferred; detected and manual loads are labeled calculated."
+        : "Energy accumulation is waiting for a valid wall-power result.";
     public IReadOnlyList<HistoryPoint> DailyEnergyHistory => _dailyEnergyHistory;
+    public AppTheme Theme => _settings.Theme;
+    public string ThemeAction => Theme == AppTheme.Dark ? "Light mode" : "Dark mode";
     public DateTime? SelectedEnergyDate
     {
         get => _selectedEnergyDate;
@@ -132,9 +171,13 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
             if (_settings.TrayDashboardPinned == value) return;
             _settings = _settings with { TrayDashboardPinned = value };
             OnPropertyChanged();
+            OnPropertyChanged(nameof(PinButtonText));
+            OnPropertyChanged(nameof(PinStatusText));
             _ = SaveSettingsAsync();
         }
     }
+    public string PinButtonText => TrayPopupPinned ? "📌  PINNED" : "📍  PIN";
+    public string PinStatusText => TrayPopupPinned ? "Pinned · stays visible" : "Unpinned · closes when focus is lost";
     public Visibility SystemOverviewVisibility => Visible(ShowSystemOverview);
     public Visibility PerformanceChartsVisibility => Visible(ShowPerformanceCharts);
     public Visibility StorageVisibility => Visible(ShowStorage);
@@ -145,6 +188,25 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     {
         _settings = settings;
         RaiseLayoutProperties();
+        OnPropertyChanged(nameof(Theme));
+        OnPropertyChanged(nameof(ThemeAction));
+    }
+
+    public async Task ToggleThemeAsync()
+    {
+        _settings = _settings with { Theme = Theme == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark };
+        await SaveSettingsAsync();
+        OnPropertyChanged(nameof(Theme));
+        OnPropertyChanged(nameof(ThemeAction));
+    }
+
+    public async Task ExportEnergyAsync(string path) => await _monitoring.EnergyHistory.ExportAsync(path);
+
+    public async Task<int> ImportEnergyAsync(string path)
+    {
+        var count = await _monitoring.EnergyHistory.ImportAsync(path);
+        await RefreshEnergyAsync();
+        return count;
     }
 
     private string Format(MetricKind kind, string format, string suffix)
@@ -157,22 +219,26 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     {
         var reading = _snapshot[kind];
         if (!reading.IsAvailable || !reading.Value.HasValue) return "N/A";
-        var modeled = reading.SourceName?.Contains("model", StringComparison.OrdinalIgnoreCase) == true;
-        return $"{(modeled ? "~" : string.Empty)}{reading.Value.Value:0} W";
+        return $"{reading.Value.Value:0} W";
     }
 
     private string SourceLabel(MetricKind kind)
     {
         var reading = _snapshot[kind];
-        if (reading.SourceName?.Contains("model", StringComparison.OrdinalIgnoreCase) == true)
-            return "ESTIMATED · UTILIZATION MODEL";
         return reading.SourceProvider switch
         {
             "HWiNFO Shared Memory" => "HWiNFO BRIDGE · HARDWARE SENSOR",
             "LibreHardwareMonitor" => "FULL ACCESS · HARDWARE SENSOR",
             "Windows Native Telemetry" => "STANDALONE · WINDOWS COUNTER",
+            "SysWatt calculated model" => "CALCULATED · MANUALLY ADJUSTABLE",
             _ => "HARDWARE SENSOR"
         };
+    }
+
+    private IReadOnlyList<HistoryPoint> Window(MetricKind metric)
+    {
+        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-_settings.GraphWindowMinutes);
+        return _monitoring.History.Get(metric).Where(point => point.Timestamp >= cutoff).ToArray();
     }
 
     private string Status(MetricKind kind)
@@ -207,10 +273,29 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     {
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
         {
+            _telemetryNoticeDismissal?.Cancel();
+            _telemetryNoticeDismissal?.Dispose();
+            _telemetryNoticeDismissal = new CancellationTokenSource();
             _telemetryNotice = change.Message;
             OnPropertyChanged(nameof(TelemetrySourceNotice));
             OnPropertyChanged(nameof(TelemetrySourceNoticeVisibility));
+            _ = DismissTelemetryNoticeAsync(_telemetryNoticeDismissal.Token);
         });
+    }
+
+    private async Task DismissTelemetryNoticeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(_settings.AlertBannerSeconds), cancellationToken);
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _telemetryNotice = null;
+                OnPropertyChanged(nameof(TelemetrySourceNotice));
+                OnPropertyChanged(nameof(TelemetrySourceNoticeVisibility));
+            });
+        }
+        catch (OperationCanceledException) { }
     }
 
     private async Task RefreshEnergyAsync()
@@ -222,6 +307,8 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
             var monthStart = new DateOnly(today.Year, today.Month, 1);
             var range = await _monitoring.EnergyHistory.GetRangeAsync(today.AddDays(-29), today);
             var todayRow = range[^1];
+            _todayHasData = todayRow.HasData;
+            _rangeHasData = range.Any(x => x.HasData);
             _todayKwh = todayRow.KilowattHours;
             _weekKwh = range.TakeLast(7).Sum(x => x.KilowattHours);
             _monthKwh = range.Where(x => x.Date >= monthStart).Sum(x => x.KilowattHours);
@@ -232,6 +319,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(TodayEnergy)); OnPropertyChanged(nameof(WeekEnergy)); OnPropertyChanged(nameof(MonthEnergy));
                 OnPropertyChanged(nameof(SelectedDayEnergy)); OnPropertyChanged(nameof(SelectedDayDetails)); OnPropertyChanged(nameof(DailyEnergyHistory));
+                OnPropertyChanged(nameof(EnergyMeasurementNotice));
             });
         }
         catch { }
@@ -288,13 +376,35 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         if (!alert.Rule.ShowInApp) return;
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
         {
+            _alertDismissal?.Cancel();
+            _alertDismissal?.Dispose();
+            _alertDismissal = new CancellationTokenSource();
             ActiveAlert = alert.Message;
             OnPropertyChanged(nameof(AlertVisibility));
+            _ = DismissAlertAsync(_alertDismissal.Token);
         });
+    }
+
+    private async Task DismissAlertAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(_settings.AlertBannerSeconds), cancellationToken);
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ActiveAlert = null;
+                OnPropertyChanged(nameof(AlertVisibility));
+            });
+        }
+        catch (OperationCanceledException) { }
     }
 
     public void Dispose()
     {
+        _alertDismissal?.Cancel();
+        _alertDismissal?.Dispose();
+        _telemetryNoticeDismissal?.Cancel();
+        _telemetryNoticeDismissal?.Dispose();
         _monitoring.SnapshotUpdated -= OnSnapshotUpdated;
         _monitoring.AlertTriggered -= OnAlertTriggered;
         _monitoring.TelemetryModeChanged -= OnTelemetryModeChanged;

@@ -99,4 +99,42 @@ public sealed class PowerEstimationTests
         Assert.InRange(result.EffectiveCpuWatts, 23, 25);
         Assert.True(result.CpuIsModeled);
     }
+
+    [Fact]
+    public void AutomaticInventory_UsesPerDeviceStorageProfilesAndDetectedDisplayCount()
+    {
+        var inventory = new HardwareInventorySnapshot("Test PC", "Test board",
+        [
+            new("nvme", "NVMe", StorageDeviceClass.Nvme, .8, 6),
+            new("hdd", "HDD", StorageDeviceClass.HardDisk, 3.8, 8)
+        ], 2, 2, DateTimeOffset.UtcNow);
+        var configured = new PowerModelSettings(DisplayWatts: 25, FanCount: 2, AutoDetectStorage: true,
+            AutoDetectCooling: true, AutoDetectDisplays: true);
+
+        var effective = configured.ApplyInventory(inventory, detectedCoolingHeaders: 4);
+
+        Assert.Equal(2, effective.StorageDeviceCount);
+        Assert.Equal(14, effective.StorageWatts);
+        Assert.Equal(2.3, effective.StorageIdleWattsPerDevice);
+        Assert.Equal(4, effective.FanCount);
+        Assert.Equal(50, effective.DisplayWatts);
+        Assert.Equal(10, effective.UsbPeripheralWatts);
+    }
+
+    [Fact]
+    public void ManualInventorySwitches_PreserveConfiguredAdjustments()
+    {
+        var inventory = new HardwareInventorySnapshot("Test PC", "Test board",
+            [new("nvme", "NVMe", StorageDeviceClass.Nvme, .8, 6)], 3, 0, DateTimeOffset.UtcNow);
+        var configured = new PowerModelSettings(StorageWatts: 20, FanCount: 6, DisplayWatts: 70,
+            StorageDeviceCount: 4, StorageIdleWattsPerDevice: 2, AutoDetectStorage: false,
+            AutoDetectCooling: false, AutoDetectDisplays: false, DisplayCount: 1);
+
+        var effective = configured.ApplyInventory(inventory, detectedCoolingHeaders: 1);
+
+        Assert.Equal(4, effective.StorageDeviceCount);
+        Assert.Equal(20, effective.StorageWatts);
+        Assert.Equal(6, effective.FanCount);
+        Assert.Equal(70, effective.DisplayWatts);
+    }
 }

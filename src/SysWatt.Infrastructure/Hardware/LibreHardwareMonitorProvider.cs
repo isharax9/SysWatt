@@ -124,6 +124,7 @@ public sealed class LibreHardwareMonitorProvider : IRawSensorProvider
         HardwareType.Motherboard => HardwareKind.Motherboard,
         HardwareType.SuperIO or HardwareType.EmbeddedController => HardwareKind.Controller,
         HardwareType.Network => HardwareKind.Network,
+        HardwareType.Psu => HardwareKind.Psu,
         _ => HardwareKind.Unknown
     };
 

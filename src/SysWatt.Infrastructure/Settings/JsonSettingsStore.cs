@@ -67,7 +67,7 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         1 => settings with
         {
-            SchemaVersion = 4,
+            SchemaVersion = 6,
             Power = settings.Power with
             {
                 StorageWatts = 0,
@@ -83,13 +83,21 @@ public sealed class JsonSettingsStore : ISettingsStore
         },
         2 or 3 => settings with
         {
-            SchemaVersion = 4,
+            SchemaVersion = 6,
             Power = settings.Power with
             {
                 CpuIdleWatts = Math.Abs(settings.Power.CpuIdleWatts - 8) < 0.001 ? 22 : settings.Power.CpuIdleWatts
             }
         },
-        4 => settings,
-        _ => settings with { SchemaVersion = 4 }
+        4 => settings with { SchemaVersion = 6 },
+        5 => settings with
+        {
+            SchemaVersion = 6,
+            TrayMetric = settings.TrayMetric == SysWatt.Core.Sensors.MetricKind.SystemPower
+                ? SysWatt.Core.Sensors.MetricKind.EstimatedWallPower
+                : settings.TrayMetric
+        },
+        6 => settings,
+        _ => settings with { SchemaVersion = 6 }
     };
 }

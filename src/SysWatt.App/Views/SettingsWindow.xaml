@@ -1,192 +1,90 @@
 <Window x:Class="SysWatt.App.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SysWatt Settings" Width="1180" Height="780" MinWidth="1080" MinHeight="720"
-        WindowStartupLocation="CenterOwner" Background="{StaticResource WindowBackground}" ShowInTaskbar="False"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="SysWatt Settings" Width="1120" Height="780" MinWidth="980" MinHeight="680"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackground}" ShowInTaskbar="False"
         WindowStyle="None" ResizeMode="CanResize" Icon="/SysWatt.App;component/Assets/SysWatt.ico">
-  <Border BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" Background="{StaticResource WindowBackground}">
-    <Grid>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="66" />
-        <RowDefinition Height="*" />
-        <RowDefinition Height="72" />
-      </Grid.RowDefinitions>
-
-      <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-              MouseLeftButtonDown="Header_MouseLeftButtonDown">
-        <Grid Margin="20,0,8,0">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <Image Source="/SysWatt.App;component/Assets/SysWatt-logo.png" Width="40" Height="40" VerticalAlignment="Center" Margin="0,0,13,0" />
-          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <TextBlock Text="SysWatt Settings" FontSize="17" FontWeight="SemiBold" />
-            <TextBlock Text="Monitoring, power model, and alert preferences" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0" />
-          </StackPanel>
-          <Button Grid.Column="2" Content="×" Style="{StaticResource WindowControlButton}" Click="Close_Click" ToolTip="Close" />
-        </Grid>
+  <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0"/></shell:WindowChrome.WindowChrome>
+  <Border BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" Background="{DynamicResource WindowBackground}">
+    <Grid><Grid.RowDefinitions><RowDefinition Height="68"/><RowDefinition Height="*"/><RowDefinition Height="72"/></Grid.RowDefinitions>
+      <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+        <Grid Margin="20,0,8,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Image Source="/SysWatt.App;component/Assets/SysWatt-logo.png" Width="42" Height="42" VerticalAlignment="Center" Margin="0,0,13,0"/><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Appearance, startup, cooling inventory, and alert policy" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,2,0,0"/></StackPanel><Button Grid.Column="2" Content="×" Style="{StaticResource WindowControlButton}" Click="Close_Click" ToolTip="Close"/></Grid>
       </Border>
 
-      <Grid Grid.Row="1" Margin="24,20,24,18">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="18" />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <Grid Grid.Row="0">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="0.72*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="1.28*"/></Grid.ColumnDefinitions>
-
-          <Border Grid.Column="0" Style="{StaticResource SettingsCard}">
-            <Grid>
-              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <TextBlock Text="TRAY &amp; STARTUP" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold" />
-              <Grid Grid.Row="1" Margin="0,13,0,15">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="Tray metric" FontWeight="SemiBold" />
-                  <TextBlock Text="Value shown in the taskbar" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,2,0,0" />
-                </StackPanel>
-                <ComboBox Grid.Column="1" ItemsSource="{Binding TrayMetricChoices}" SelectedItem="{Binding TrayMetric}" MinWidth="220" />
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24,22,24,26">
+          <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="16"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource SettingsCard}"><StackPanel>
+              <TextBlock Text="APPEARANCE &amp; STARTUP" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
+              <Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <StackPanel><TextBlock Text="Color theme" FontWeight="SemiBold"/><TextBlock Text="Applied to dashboard and tray popup" Foreground="{DynamicResource MutedBrush}" FontSize="9" Margin="0,2,0,0"/></StackPanel><ComboBox Grid.Column="1" ItemsSource="{Binding ThemeChoices}" SelectedItem="{Binding Theme}" MinWidth="200"/>
+                <StackPanel Grid.Row="2"><TextBlock Text="Tray metric" FontWeight="SemiBold"/><TextBlock Text="Hardware reading rendered in tray icon" Foreground="{DynamicResource MutedBrush}" FontSize="9" Margin="0,2,0,0"/></StackPanel><ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding TrayMetricChoices}" SelectedItem="{Binding TrayMetric}" MinWidth="200"/>
+                <StackPanel Grid.Row="4"><TextBlock Text="Graph rolling window" FontWeight="SemiBold"/><TextBlock Text="Custom live duration: 1–240 minutes" Foreground="{DynamicResource MutedBrush}" FontSize="9" Margin="0,2,0,0"/></StackPanel><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding GraphWindowMinutes, UpdateSourceTrigger=PropertyChanged}" ToolTip="Minutes retained in every live dashboard graph"/>
+                <StackPanel Grid.Row="6"><TextBlock Text="Alert banner duration" FontWeight="SemiBold"/><TextBlock Text="Automatically clears: 3–60 seconds" Foreground="{DynamicResource MutedBrush}" FontSize="9" Margin="0,2,0,0"/></StackPanel><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding AlertBannerSeconds, UpdateSourceTrigger=PropertyChanged}"/>
               </Grid>
-              <StackPanel Grid.Row="2" Orientation="Horizontal">
-                <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,0,26,0" />
-                <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}" />
-              </StackPanel>
-            </Grid>
-          </Border>
+              <StackPanel Orientation="Horizontal" Margin="0,20,0,0"><CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" Margin="0,0,28,0"/><CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}"/></StackPanel>
+            </StackPanel></Border>
 
-          <Border Grid.Column="2" Style="{StaticResource SettingsCard}">
-            <Grid>
-              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <TextBlock Text="POWER MODEL" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold" />
-              <TextBlock Grid.Row="1" Text="PC loads are counted before PSU loss; displays and external devices are added at the wall." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,4,0,9" TextWrapping="Wrap" />
-              <Grid Grid.Row="2">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition/><ColumnDefinition Width="74"/><ColumnDefinition Width="24"/><ColumnDefinition Width="16"/>
-                  <ColumnDefinition/><ColumnDefinition Width="74"/><ColumnDefinition Width="24"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Text="Motherboard + RAM" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="1" Text="{Binding BaseWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="4" Text="CPU idle model" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="5" Text="{Binding CpuIdleWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="1" Text="CPU peak / TDP model" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CpuPeakWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="1" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="1" Grid.Column="4" Text="GPU idle model" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="5" Text="{Binding GpuIdleWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="1" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="2" Text="GPU peak / board model" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding GpuPeakWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="2" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="2" Grid.Column="4" Text="Storage device count" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="2" Grid.Column="5" Text="{Binding StorageDeviceCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="2" Grid.Column="6" Text="#" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="3" Text="Storage active ceiling" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding StorageWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Total storage draw when activity or throughput reaches the configured ceiling."/>
-                <TextBlock Grid.Row="3" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="3" Grid.Column="4" Text="Storage idle / device" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="3" Grid.Column="5" Text="{Binding StorageIdleWattsPerDevice, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="3" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="4" Text="Storage throughput ceiling" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding StorageThroughputCeilingMBps, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Approximate combined read/write rate where drives are considered fully active."/>
-                <TextBlock Grid.Row="4" Grid.Column="2" Text="MB/s" Foreground="{StaticResource MutedBrush}" FontSize="9" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="4" Grid.Column="4" Text="Regular fan count" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="4" Grid.Column="5" Text="{Binding FanCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="4" Grid.Column="6" Text="#" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="5" Text="Rated watts per fan" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding WattsPerFan, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Use 12 × the fan label's rated amps."/>
-                <TextBlock Grid.Row="5" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="5" Grid.Column="4" Text="Other cooling / pumps" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="5" Grid.Column="5" Text="{Binding OtherCoolingWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="5" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="6" Text="USB-powered devices" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding UsbPeripheralWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="6" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="6" Grid.Column="4" Text="PSU efficiency" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="6" Grid.Column="5" Text="{Binding EfficiencyPercent, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="6" Grid.Column="6" Text="%" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="7" Text="Displays at wall" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding DisplayWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="7" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="7" Grid.Column="4" Text="External peripherals" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="7" Grid.Column="5" Text="{Binding ExternalPeripheralWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="7" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-
-                <TextBlock Grid.Row="8" Text="Other wall loads" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding OtherWallWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="8" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+            <Border Grid.Column="2" Style="{StaticResource SettingsCard}"><StackPanel>
+              <TextBlock Text="COOLING POWER INVENTORY" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
+              <TextBlock Text="CPU/case fan headers are detected when firmware exposes them. Splitters and unreported fans still need this manual count; GPU fans are already included in GPU board power." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,14"/>
+              <CheckBox Content="Use detected cooling headers as a minimum" IsChecked="{Binding AutoDetectCooling}" Margin="0,0,0,9"/>
+              <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="88"/><ColumnDefinition Width="34"/><ColumnDefinition Width="18"/><ColumnDefinition/><ColumnDefinition Width="88"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="CPU air-cooler fans" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding CpuCoolerFanCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,3"/><TextBlock Grid.Column="2" Text="#" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="4" Text="Rated watts / fan" VerticalAlignment="Center"/><TextBox Grid.Column="5" Text="{Binding WattsPerFan, UpdateSourceTrigger=PropertyChanged}" Margin="5,3" ToolTip="Use label voltage × rated current. Example: 12 V × 0.20 A = 2.4 W."/><TextBlock Grid.Column="6" Text="W" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Text="Case / radiator fans" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CaseFanCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,3"/><TextBlock Grid.Row="1" Grid.Column="2" Text="#" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Grid.Column="4" Text="Pumps / hubs / controllers" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="5" Text="{Binding OtherCoolingWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,3"/><TextBlock Grid.Row="1" Grid.Column="6" Text="W" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="3" Margin="5,7,0,0"><TextBlock Text="RATED MAXIMUM" Foreground="{DynamicResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding CoolingRatedPower}" FontSize="17" FontWeight="SemiBold"/></StackPanel>
               </Grid>
+            </StackPanel></Border>
+          </Grid>
+
+          <Border Style="{StaticResource SettingsCard}" Margin="0,16,0,0"><StackPanel>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="HYBRID POWER MODEL" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold"/><TextBlock Text="Exact CPU/GPU watts win whenever a sensor is available. Every remaining assumption is visible and manually adjustable." Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,4,0,0"/></StackPanel><TextBlock Grid.Column="1" Text="SENSOR + DETECTION + MANUAL" Foreground="{DynamicResource AccentBrush}" FontSize="9" VerticalAlignment="Top"/></Grid>
+            <Grid Margin="0,14,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="92"/><ColumnDefinition Width="30"/><ColumnDefinition Width="24"/><ColumnDefinition/><ColumnDefinition Width="92"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+              <TextBlock Text="Motherboard + RAM" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding BaseWatts}"/><TextBlock Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Column="4" Text="PSU efficiency" VerticalAlignment="Center"/><TextBox Grid.Column="5" Text="{Binding EfficiencyPercent}"/><TextBlock Grid.Column="6" Text="%" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="1" Text="CPU idle / fallback" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CpuIdleWatts}"/><TextBlock Grid.Row="1" Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="1" Grid.Column="4" Text="CPU peak / TDP envelope" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="5" Text="{Binding CpuPeakWatts}"/><TextBlock Grid.Row="1" Grid.Column="6" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="2" Text="GPU idle / fallback" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding GpuIdleWatts}"/><TextBlock Grid.Row="2" Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="2" Grid.Column="4" Text="GPU peak / board envelope" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="5" Text="{Binding GpuPeakWatts}"/><TextBlock Grid.Row="2" Grid.Column="6" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="3" Text="Storage active ceiling" VerticalAlignment="Center"/><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding StorageWatts}"/><TextBlock Grid.Row="3" Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <StackPanel Grid.Row="3" Grid.Column="4" Grid.ColumnSpan="3" Orientation="Horizontal" VerticalAlignment="Center"><CheckBox Content="Auto-identify NVMe / SSD / HDD" IsChecked="{Binding AutoDetectStorage}"/><TextBlock Text="  Manual devices" Foreground="{DynamicResource MutedBrush}" Margin="12,0,4,0"/><TextBox Text="{Binding StorageDeviceCount}" Width="44"/></StackPanel>
+              <TextBlock Grid.Row="4" Text="Storage idle / device" VerticalAlignment="Center"/><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding StorageIdleWattsPerDevice}"/><TextBlock Grid.Row="4" Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="4" Grid.Column="4" Text="Storage throughput ceiling" VerticalAlignment="Center"/><TextBox Grid.Row="4" Grid.Column="5" Text="{Binding StorageThroughputCeilingMBps}"/><TextBlock Grid.Row="4" Grid.Column="6" Text="MB/s" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <TextBlock Grid.Row="5" Text="USB-powered devices" VerticalAlignment="Center"/><TextBox Grid.Row="5" Grid.Column="1" Text="{Binding UsbPeripheralWatts}"/><TextBlock Grid.Row="5" Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <StackPanel Grid.Row="5" Grid.Column="4" Grid.ColumnSpan="3" Orientation="Horizontal" VerticalAlignment="Center"><CheckBox Content="Auto-detect active displays" IsChecked="{Binding AutoDetectDisplays}"/><TextBlock Text="  Manual count" Foreground="{DynamicResource MutedBrush}" Margin="12,0,4,0"/><TextBox Text="{Binding DisplayCount}" Width="44"/></StackPanel>
+              <TextBlock Grid.Row="6" Text="Watts per display" VerticalAlignment="Center"/><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding DisplayWatts}"/><TextBlock Grid.Row="6" Grid.Column="2" Text="W" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+              <StackPanel Grid.Row="6" Grid.Column="4" Grid.ColumnSpan="3" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="External peripherals"/><TextBox Text="{Binding ExternalPeripheralWatts}" Width="70" Margin="8,0,4,0"/><TextBlock Text="W   Other wall"/><TextBox Text="{Binding OtherWallWatts}" Width="70" Margin="8,0,4,0"/><TextBlock Text="W"/></StackPanel>
+              <CheckBox Grid.Row="7" Grid.ColumnSpan="3" Content="Auto-detect cameras / portable devices" IsChecked="{Binding AutoDetectRemovablePeripherals}" VerticalAlignment="Center"/>
+              <StackPanel Grid.Row="7" Grid.Column="4" Grid.ColumnSpan="3" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Watts per detected removable peripheral"/><TextBox Text="{Binding WattsPerDetectedPeripheral}" Width="70" Margin="8,0,4,0"/><TextBlock Text="W"/></StackPanel>
             </Grid>
-          </Border>
-        </Grid>
+          </StackPanel></Border>
 
-        <Grid Grid.Row="2" Margin="2,0,2,10">
-          <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="CUSTOM ALERTS" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold" />
-            <TextBlock Text="Rules evaluate normalized live metrics. Missing or stale readings never trigger." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,3,0,0" />
-          </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal">
-            <Button Content="Add rule" Command="{Binding AddAlertCommand}" Margin="0,0,8,0" />
-            <Button Content="Duplicate" Command="{Binding DuplicateAlertCommand}" Margin="0,0,8,0" />
-            <Button Content="Delete" Command="{Binding DeleteAlertCommand}" />
-          </StackPanel>
-        </Grid>
+          <Border Style="{StaticResource SettingsCard}" Margin="0,16,0,20"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1"/><ColumnDefinition Width="1"/></Grid.ColumnDefinitions>
+            <StackPanel Margin="0,0,22,0"><TextBlock Text="MEASUREMENT POLICY" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Exact CPU/GPU sensors are never overwritten. Missing component power uses the adjustable utilization envelope; storage, cooling, board, display, and peripheral values are labeled CALCULATED." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel>
+            <StackPanel Grid.Column="1" Margin="0,0,22,0"><TextBlock Text="ENERGY DATABASE" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Daily units (1 unit = 1 kWh) integrate the hybrid wall-power result in SQLite. Archives can be imported and exported from Energy history." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel>
+            <StackPanel Grid.Column="2"><TextBlock Text="FULL HARDWARE ACCESS" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock Text="When Ryzen or motherboard sensors are permission-restricted, use the dashboard action to restart with administrator access." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel>
+          </Grid></Border>
 
-        <DataGrid Grid.Row="3" ItemsSource="{Binding Alerts}" SelectedItem="{Binding SelectedAlert}" AutoGenerateColumns="False"
-                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" AlternationCount="2" FrozenColumnCount="2">
-          <DataGrid.Columns>
-            <DataGridTemplateColumn Header="ON" Width="44">
-              <DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="RULE NAME" Binding="{Binding Name}" Width="1.25*" MinWidth="145" />
-            <DataGridTemplateColumn Header="METRIC" Width="155">
-              <DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding MetricChoices}" SelectedItem="{Binding Metric}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="OPERATOR" Width="84">
-              <DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding OperatorChoices}" SelectedItem="{Binding Operator}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="VALUE" Binding="{Binding Threshold}" Width="70" />
-            <DataGridTextColumn Header="FOR (S)" Binding="{Binding DurationSeconds}" Width="72" />
-            <DataGridTextColumn Header="COOLDOWN" Binding="{Binding CooldownSeconds}" Width="88" />
-            <DataGridTemplateColumn Header="SEVERITY" Width="100">
-              <DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding SeverityChoices}" SelectedItem="{Binding Severity}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="TOAST" Width="58">
-              <DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding DesktopNotification}" HorizontalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="IN APP" Width="62">
-              <DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding InApp}" HorizontalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-          </DataGrid.Columns>
-        </DataGrid>
-      </Grid>
+          <Grid Margin="2,0,2,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="CUSTOM ALERTS" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold"/><TextBlock Text="Rules evaluate live measured metrics. Missing or stale readings never trigger." Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="Add rule" Command="{Binding AddAlertCommand}" Margin="0,0,8,0"/><Button Content="Duplicate" Command="{Binding DuplicateAlertCommand}" Margin="0,0,8,0"/><Button Content="Delete" Command="{Binding DeleteAlertCommand}"/></StackPanel></Grid>
+          <DataGrid ItemsSource="{Binding Alerts}" SelectedItem="{Binding SelectedAlert}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" AlternationCount="2" MinHeight="260">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="ON" Width="44"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+              <DataGridTextColumn Header="RULE NAME" Binding="{Binding Name}" Width="1.25*" MinWidth="145"/>
+              <DataGridTemplateColumn Header="METRIC" Width="155"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding MetricChoices}" SelectedItem="{Binding Metric}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="OPERATOR" Width="84"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding OperatorChoices}" SelectedItem="{Binding Operator}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+              <DataGridTextColumn Header="VALUE" Binding="{Binding Threshold}" Width="70"/><DataGridTextColumn Header="FOR (S)" Binding="{Binding DurationSeconds}" Width="72"/><DataGridTextColumn Header="COOLDOWN" Binding="{Binding CooldownSeconds}" Width="88"/>
+              <DataGridTemplateColumn Header="SEVERITY" Width="100"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding SeverityChoices}" SelectedItem="{Binding Severity}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="TOAST" Width="58"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding DesktopNotification}" HorizontalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn><DataGridTemplateColumn Header="IN APP" Width="62"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding InApp}" HorizontalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </ScrollViewer>
 
-      <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-        <Grid Margin="24,0">
-          <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,18,0" />
-          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Content="Export diagnostics…" Click="ExportDiagnostics_Click" Margin="0,0,10,0" />
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Margin="0,0,10,0" />
-            <Button Content="Save changes" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButton}" />
-          </StackPanel>
-        </Grid>
-      </Border>
+      <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><Grid Margin="24,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,18,0"/><StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><Button Content="Export diagnostics…" Click="ExportDiagnostics_Click" Margin="0,0,10,0"/><Button Content="Cancel" Command="{Binding CancelCommand}" Margin="0,0,10,0"/><Button Content="Save changes" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButton}"/></StackPanel></Grid></Border>
     </Grid>
   </Border>
 </Window>

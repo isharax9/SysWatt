@@ -28,6 +28,9 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
         new(MetricKind.StorageReadRate, SensorKind.Throughput, [HardwareKind.Storage], 0, 1_000_000, ["read rate", "read"], ["write"]),
         new(MetricKind.StorageWriteRate, SensorKind.Throughput, [HardwareKind.Storage], 0, 1_000_000, ["write rate", "write"], ["read"]),
         new(MetricKind.StorageTemperature, SensorKind.Temperature, [HardwareKind.Storage], -10, 125, ["temperature", "composite"], []),
+        new(MetricKind.StoragePower, SensorKind.Power, [HardwareKind.Storage], 0.01, 500, ["power", "total"], ["limit"]),
+        new(MetricKind.SystemPower, SensorKind.Power, [HardwareKind.Psu, HardwareKind.Ups], 0.01, 100_000,
+            ["input power", "wall power", "total power", "output power", "power"], ["limit", "capacity"]),
         new(MetricKind.FanSpeed, SensorKind.Fan, [HardwareKind.Motherboard, HardwareKind.Controller, HardwareKind.Cpu, HardwareKind.GpuNvidia, HardwareKind.GpuAmd], 0, 20000, ["cpu", "system", "fan"], [])
     ];
 
@@ -137,7 +140,8 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
     private static int Score(RawSensorReading reading, Policy policy)
     {
         var name = NormalizeName($"{reading.Descriptor.SensorName} {reading.Descriptor.SensorId}");
-        var score = reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
+        var score = policy.Metric == MetricKind.StorageActivity && reading.Descriptor.Provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 135
+            : reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
             : reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
             : reading.Descriptor.Provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 95
             : 50;

@@ -56,6 +56,31 @@ public sealed class SqliteEnergyHistoryStoreTests : IAsyncDisposable
         Assert.Contains("Standalone", day.SourceSummary);
     }
 
+    [Fact]
+    public async Task ExportAndImportRoundTripDailyMeasuredEnergy()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var sourceRoot = Path.Combine(_root, "source");
+        var destinationRoot = Path.Combine(_root, "destination");
+        var archive = Path.Combine(_root, "history.syswatt-energy.json");
+        var start = new DateTimeOffset(2026, 8, 23, 12, 0, 0, TimeSpan.Zero);
+        await using (var source = new SqliteEnergyHistoryStore(sourceRoot))
+        {
+            await source.RecordSampleAsync(start, 750, TelemetrySource.FullHardwareAccess, cancellationToken);
+            await source.RecordSampleAsync(start.AddMinutes(2), 750, TelemetrySource.FullHardwareAccess, cancellationToken);
+            await source.ExportAsync(archive, cancellationToken);
+        }
+
+        await using var destination = new SqliteEnergyHistoryStore(destinationRoot);
+        var imported = await destination.ImportAsync(archive, cancellationToken);
+        var day = await destination.GetDayAsync(DateOnly.FromDateTime(start.LocalDateTime), cancellationToken);
+
+        Assert.Equal(1, imported);
+        Assert.True(day.HasData);
+        Assert.Equal(0.025, day.KilowattHours, 6);
+        Assert.Contains("Imported", day.SourceSummary);
+    }
+
     public ValueTask DisposeAsync()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, true);

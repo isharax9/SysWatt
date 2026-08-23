@@ -151,6 +151,10 @@ public sealed class HWiNFOSharedMemoryProvider : IRawSensorProvider
 
     private static HardwareKind InferHardwareKind(string text)
     {
+        if (text.Contains("UPS", StringComparison.OrdinalIgnoreCase) || text.Contains("uninterruptible", StringComparison.OrdinalIgnoreCase))
+            return HardwareKind.Ups;
+        if (text.Contains("PSU", StringComparison.OrdinalIgnoreCase) || text.Contains("power supply", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("power meter", StringComparison.OrdinalIgnoreCase)) return HardwareKind.Psu;
         if (text.Contains("GPU", StringComparison.OrdinalIgnoreCase) || text.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase))
             return HardwareKind.GpuNvidia;
         if (text.Contains("Radeon", StringComparison.OrdinalIgnoreCase) || text.Contains("AMD Graphics", StringComparison.OrdinalIgnoreCase))

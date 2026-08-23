@@ -4,14 +4,19 @@ using SysWatt.Core.Sensors;
 
 namespace SysWatt.Core.Settings;
 
+public enum AppTheme { Dark, Light }
+
 public sealed record AppSettings
 {
-    public int SchemaVersion { get; init; } = 4;
+    public int SchemaVersion { get; init; } = 6;
     public MetricKind TrayMetric { get; init; } = MetricKind.EstimatedWallPower;
+    public AppTheme Theme { get; init; } = AppTheme.Dark;
     public bool StartWithWindows { get; init; }
     public bool StartMinimized { get; init; } = true;
     public bool TrayDashboardPinned { get; init; }
     public int PollingIntervalMilliseconds { get; init; } = 1000;
+    public int GraphWindowMinutes { get; init; } = 15;
+    public int AlertBannerSeconds { get; init; } = 8;
     public string AccentColor { get; init; } = "#76E6B4";
     public PowerModelSettings Power { get; init; } = new();
     public DashboardLayoutSettings Dashboard { get; init; } = new();
@@ -25,7 +30,17 @@ public sealed record AppSettings
             && double.IsFinite(a.Threshold)
             && a.RequiredDuration >= TimeSpan.Zero && a.RequiredDuration <= TimeSpan.FromDays(1)
             && a.Cooldown >= TimeSpan.Zero && a.Cooldown <= TimeSpan.FromDays(30)).ToList();
-        return this with { SchemaVersion = 4, PollingIntervalMilliseconds = interval, Power = power, Alerts = alerts };
+        var trayMetric = TrayMetric == MetricKind.SystemPower ? MetricKind.EstimatedWallPower : TrayMetric;
+        return this with
+        {
+            SchemaVersion = 6,
+            PollingIntervalMilliseconds = interval,
+            GraphWindowMinutes = Math.Clamp(GraphWindowMinutes, 1, 240),
+            AlertBannerSeconds = Math.Clamp(AlertBannerSeconds, 3, 60),
+            Power = power,
+            Alerts = alerts,
+            TrayMetric = trayMetric
+        };
     }
 }
 

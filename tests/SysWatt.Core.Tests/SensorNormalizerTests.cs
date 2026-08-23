@@ -96,6 +96,19 @@ public sealed class SensorNormalizerTests
         Assert.Contains(fans, fan => fan.SensorId == "/board/fan/2" && fan.Rpm == 880);
     }
 
+    [Fact]
+    public void AggregateWindowsDiskActivityWinsOverOneBusyPhysicalDrive()
+    {
+        var oneDrive = Reading("/hdd/2/load/0", "Total Activity", HardwareKind.Storage, SensorKind.Load, 100);
+        var aggregate = Reading("windows/storage/activity", "Total activity", HardwareKind.Storage, SensorKind.Load, 3,
+            "Windows Native Telemetry");
+
+        var result = _normalizer.Normalize([oneDrive, aggregate], Now)[MetricKind.StorageActivity];
+
+        Assert.Equal(3, result.Value);
+        Assert.Equal("Windows Native Telemetry", result.SourceProvider);
+    }
+
     private static RawSensorReading Reading(string id, string name, HardwareKind hardware, SensorKind sensor, double? value, string provider = "LibreHardwareMonitor") =>
         new(new SensorDescriptor(provider, "/hardware/0", "Fixture hardware", hardware, id, name, sensor, ""), value, Now);
 }
