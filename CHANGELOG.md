@@ -9,12 +9,15 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Original SysWatt application logo across the executable, installer, windows, dashboard, and initial tray state.
 - Named dashboard tiles for every fresh fan RPM sensor exposed by the hardware provider.
 - Headless live-sensor diagnostics with provider/device error records and human-readable enum values.
+- Optional HWiNFO shared-memory provider that takes priority and suppresses concurrent low-level polling when active.
+- Structured setup-power contributors for motherboard/RAM, storage, fans, cooling, USB devices, displays, external peripherals, and other wall loads.
 
 ### Changed
 
 - Redesigned Settings UI with branded dark window chrome, accessible control contrast, readable metric labels and operators, and consistent alert-grid interactions.
 - Moved first sensor enumeration fully off the UI thread and fixed opening Settings directly from a hidden tray state.
 - Added visible CPU/fan access guidance, source-detail tooltips, and rejection of implausible zero CPU temperature/package-power readings.
+- Replaced unbounded white tooltips with readable wrapped dark tooltips and split PC DC loads from external AC loads in the estimate formula.
 
 ## [0.1.0] - 2026-08-22
 

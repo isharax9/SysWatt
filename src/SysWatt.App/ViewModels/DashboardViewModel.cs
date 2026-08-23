@@ -48,10 +48,15 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     {
         get
         {
+            var hwinfoGuidance = _monitoring.LastRawReadings.FirstOrDefault(reading =>
+                reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) &&
+                !reading.IsAvailable &&
+                !string.IsNullOrWhiteSpace(reading.Error));
             var missing = new List<string>();
             if (!_snapshot[MetricKind.CpuTemperature].IsAvailable) missing.Add("CPU temperature");
             if (!_snapshot[MetricKind.CpuPower].IsAvailable) missing.Add("CPU power");
             if (_snapshot.Fans.Count == 0) missing.Add("fan RPM");
+            if (hwinfoGuidance is not null) return hwinfoGuidance.Error!;
             return missing.Count == 0
                 ? string.Empty
                 : $"Unavailable: {string.Join(", ", missing)}. Hardware/firmware support or low-level sensor permissions may be required; hover an N/A value for details.";

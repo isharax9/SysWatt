@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SysWatt.Core\SysWatt.Core.csproj" />
     <PackageReference Include="LibreHardwareMonitorLib" />
+    <PackageReference Include="Hwinfo.SharedMemory.Net" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 </Project>

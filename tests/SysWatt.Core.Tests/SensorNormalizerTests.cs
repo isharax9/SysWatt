@@ -54,6 +54,18 @@ public sealed class SensorNormalizerTests
     }
 
     [Fact]
+    public void HwinfoSharedMemoryWinsWhenItPublishesAValidEquivalentSensor()
+    {
+        var direct = Reading("direct", "Core (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 47);
+        var shared = Reading("shared", "CPU (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 51, "HWiNFO Shared Memory");
+
+        var result = _normalizer.Normalize([direct, shared], Now)[MetricKind.CpuTemperature];
+
+        Assert.Equal(51, result.Value);
+        Assert.Equal("shared", result.SourceSensorId);
+    }
+
+    [Fact]
     public void PreservesEveryFreshValidFanAsANamedReading()
     {
         var readings = new[]

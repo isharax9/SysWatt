@@ -2,16 +2,18 @@
 
 ## Power
 
-`Base system consumption` covers only equipment not otherwise measured: motherboard, RAM, storage, fans, cooling, and lighting. The model adds each CPU and GPU reading once, preventing implicit double counting:
+SysWatt separates PC-side DC loads from devices plugged directly into the wall. The PC model includes motherboard/RAM, storage, regular fans (`count × rated watts`), other cooling/pumps, and USB-powered devices. Displays, externally powered peripherals, and other wall loads are added after PSU losses:
 
 ```text
-DC watts = available CPU watts + available GPU watts + base watts
-Wall watts = DC watts / PSU efficiency
+PC DC watts = available CPU watts + available GPU watts + configured PC auxiliaries
+Setup wall watts = PC DC watts / PSU efficiency + displays + external peripherals + other wall loads
 ```
 
-Defaults are 45 W base and 87% efficiency. Valid base load is 0–1000 W; valid efficiency is 50–100%. Both results are estimates. Missing CPU/GPU sensors yield a numeric partial estimate plus an explicit lower-confidence message, not a fabricated component reading.
+Fan RPM does not reveal electrical power. Use the rated current printed on the fan label or datasheet: `rated watts = 12 V × rated amps` (for example, `12 V × 0.16 A = 1.92 W`). This is normally a conservative maximum; actual PWM-controlled consumption varies. Fans on a shared hub still need to be counted individually.
 
-Example: CPU 65 W + GPU 170 W + base 45 W = 280 W estimated DC; at 80% efficiency, estimated wall draw is 350 W.
+Defaults are 30 W motherboard/RAM, 8 W storage, three 2 W fans, 5 W USB devices, and 87% PSU efficiency. Display and external-load defaults are zero until configured. Missing CPU/GPU sensors yield a numeric partial estimate plus an explicit lower-confidence message, not a fabricated component reading.
+
+Example: CPU 65 W + GPU 170 W + 49 W PC auxiliaries = 284 W estimated DC. At 80% efficiency that PC draws 355 W at the wall; adding a 45 W monitor gives a 400 W total setup estimate.
 
 ## Alerts
 

@@ -65,7 +65,22 @@ public sealed class JsonSettingsStore : ISettingsStore
 
     private static AppSettings Migrate(AppSettings settings) => settings.SchemaVersion switch
     {
-        1 => settings,
-        _ => settings with { SchemaVersion = 1 }
+        1 => settings with
+        {
+            SchemaVersion = 2,
+            Power = settings.Power with
+            {
+                StorageWatts = 0,
+                FanCount = 0,
+                WattsPerFan = 0,
+                OtherCoolingWatts = 0,
+                UsbPeripheralWatts = 0,
+                DisplayWatts = 0,
+                ExternalPeripheralWatts = 0,
+                OtherWallWatts = 0
+            }
+        },
+        2 => settings,
+        _ => settings with { SchemaVersion = 2 }
     };
 }

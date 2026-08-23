@@ -6,7 +6,7 @@ namespace SysWatt.Core.Settings;
 
 public sealed record AppSettings
 {
-    public int SchemaVersion { get; init; } = 1;
+    public int SchemaVersion { get; init; } = 2;
     public MetricKind TrayMetric { get; init; } = MetricKind.EstimatedWallPower;
     public bool StartWithWindows { get; init; }
     public bool StartMinimized { get; init; } = true;
@@ -23,7 +23,7 @@ public sealed record AppSettings
             && double.IsFinite(a.Threshold)
             && a.RequiredDuration >= TimeSpan.Zero && a.RequiredDuration <= TimeSpan.FromDays(1)
             && a.Cooldown >= TimeSpan.Zero && a.Cooldown <= TimeSpan.FromDays(30)).ToList();
-        return this with { SchemaVersion = 1, PollingIntervalMilliseconds = interval, Power = power, Alerts = alerts };
+        return this with { SchemaVersion = 2, PollingIntervalMilliseconds = interval, Power = power, Alerts = alerts };
     }
 }
 

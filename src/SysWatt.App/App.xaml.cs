@@ -65,6 +65,7 @@ public partial class App : System.Windows.Application
             builder.Services.AddSingleton<IPowerEstimationService, PowerEstimationService>();
             builder.Services.AddSingleton<IAlertEvaluator, AlertEvaluator>();
             builder.Services.AddSingleton<ISessionHistory>(_ => new SessionHistory(300));
+            builder.Services.AddSingleton<IRawSensorProvider, HwinfoSharedMemoryProvider>();
             builder.Services.AddSingleton<IRawSensorProvider, LibreHardwareMonitorProvider>();
             builder.Services.AddSingleton<IRawSensorProvider, WindowsMemoryProvider>();
             builder.Services.AddSingleton<IMonitoringService, MonitoringService>();

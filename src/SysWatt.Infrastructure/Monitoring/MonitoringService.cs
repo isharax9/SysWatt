@@ -73,6 +73,12 @@ public sealed class MonitoringService : IMonitoringService
         var all = new List<RawSensorReading>();
         foreach (var provider in _providers)
         {
+            if (provider.Name.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) &&
+                all.Any(reading => reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) && reading.IsAvailable))
+            {
+                _logger.LogDebug("HWiNFO is publishing sensors; skipping concurrent LibreHardwareMonitor hardware access for this cycle.");
+                continue;
+            }
             try
             {
                 all.AddRange(await provider.ReadAsync(cancellationToken).ConfigureAwait(false));

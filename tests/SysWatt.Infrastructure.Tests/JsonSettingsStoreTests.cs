@@ -26,8 +26,28 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         await File.WriteAllTextAsync(store.SettingsPath, "{nope", TestContext.Current.CancellationToken);
         var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(1, loaded.SchemaVersion);
+        Assert.Equal(2, loaded.SchemaVersion);
         Assert.Single(Directory.GetFiles(_directory, "*.invalid-*"));
+    }
+
+    [Fact]
+    public async Task VersionOnePowerSettingsMigrateWithoutDoubleCountingNewContributors()
+    {
+        var store = new JsonSettingsStore(NullLogger<JsonSettingsStore>.Instance, _directory);
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(store.SettingsPath,
+            """
+            {
+              "SchemaVersion": 1,
+              "Power": { "BaseSystemWatts": 45, "PsuEfficiency": 0.9 }
+            }
+            """, TestContext.Current.CancellationToken);
+
+        var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.Equal(45, loaded.Power.PcAuxiliaryWatts);
+        Assert.Equal(0, loaded.Power.ExternalAcWatts);
     }
 
     public void Dispose()

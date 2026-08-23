@@ -132,7 +132,9 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
     private static int Score(RawSensorReading reading, Policy policy)
     {
         var name = NormalizeName($"{reading.Descriptor.SensorName} {reading.Descriptor.SensorId}");
-        var score = reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100 : 50;
+        var score = reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
+            : reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
+            : 50;
         score += policy.Prefer.Select((hint, i) => name.Contains(hint, StringComparison.OrdinalIgnoreCase) ? 40 - (i * 3) : 0).Sum();
         score -= policy.Reject.Count(hint => name.Contains(hint, StringComparison.OrdinalIgnoreCase)) * 35;
         return score;
