@@ -4,12 +4,12 @@ SysWatt is a lightweight Windows tray utility for live hardware monitoring and h
 
 > **Status:** `0.1.0` pre-release. The architecture and automated domain tests are ready; real-hardware behavior still needs validation across more systems. The Ryzen 5 3600 / RTX 3060 target is an initial manual-test target, not a compatibility claim.
 
-![SysWatt dashboard placeholder](docs/screenshots/dashboard-placeholder.svg)
+![SysWatt redesigned settings](docs/screenshots/settings.png)
 
 ## Features
 
 - Notification-area-first lifecycle with a live numeric tray icon and no taskbar clutter.
-- Compact CPU, GPU, memory, storage, fan, measured component power, and modeled power dashboard.
+- Compact CPU, GPU, memory, storage, measured component power, modeled power, and individually named fan-RPM dashboard.
 - Bounded five-minute sparklines sampled every second.
 - Dynamic, ranked sensor mapping—no hardcoded machine sensor names or indexes.
 - Configurable base-system load and PSU efficiency.

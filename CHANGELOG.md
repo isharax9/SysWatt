@@ -4,6 +4,18 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Added
+
+- Original SysWatt application logo across the executable, installer, windows, dashboard, and initial tray state.
+- Named dashboard tiles for every fresh fan RPM sensor exposed by the hardware provider.
+- Headless live-sensor diagnostics with provider/device error records and human-readable enum values.
+
+### Changed
+
+- Redesigned Settings UI with branded dark window chrome, accessible control contrast, readable metric labels and operators, and consistent alert-grid interactions.
+- Moved first sensor enumeration fully off the UI thread and fixed opening Settings directly from a hidden tray state.
+- Added visible CPU/fan access guidance, source-detail tooltips, and rejection of implausible zero CPU temperature/package-power readings.
+
 ## [0.1.0] - 2026-08-22
 
 ### Added

@@ -18,8 +18,8 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
     private static readonly Policy[] Policies =
     [
         new(MetricKind.CpuUsage, SensorKind.Load, [HardwareKind.Cpu], 0, 100, ["total", "cpu total", "package"], ["core", "max"]),
-        new(MetricKind.CpuTemperature, SensorKind.Temperature, [HardwareKind.Cpu], -10, 125, ["package", "tctl", "tdie", "cpu"], ["distance", "limit"]),
-        new(MetricKind.CpuPower, SensorKind.Power, [HardwareKind.Cpu], 0, 1000, ["package", "cpu package"], ["core", "dram", "soc"]),
+        new(MetricKind.CpuTemperature, SensorKind.Temperature, [HardwareKind.Cpu], 1, 125, ["package", "tctl", "tdie", "cpu"], ["distance", "limit"]),
+        new(MetricKind.CpuPower, SensorKind.Power, [HardwareKind.Cpu], 0.01, 1000, ["package", "cpu package"], ["core", "dram", "soc"]),
         new(MetricKind.GpuUsage, SensorKind.Load, [HardwareKind.GpuNvidia, HardwareKind.GpuAmd, HardwareKind.GpuIntel], 0, 100, ["core", "gpu core", "d3d"], ["memory", "video", "copy"]),
         new(MetricKind.GpuTemperature, SensorKind.Temperature, [HardwareKind.GpuNvidia, HardwareKind.GpuAmd, HardwareKind.GpuIntel], -10, 125, ["core", "gpu core"], ["memory", "hot spot", "junction"]),
         new(MetricKind.GpuPower, SensorKind.Power, [HardwareKind.GpuNvidia, HardwareKind.GpuAmd, HardwareKind.GpuIntel], 0, 1500, ["board", "total", "gpu package", "package"], ["core", "rail"]),
@@ -42,7 +42,7 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
                 .FirstOrDefault();
 
             metrics[policy.Metric] = winner.Reading is null
-                ? MetricReading.Unavailable(policy.Metric, MetricUnits.For(policy.Metric), now, "No valid compatible sensor was detected.")
+                ? MetricReading.Unavailable(policy.Metric, MetricUnits.For(policy.Metric), now, ExplainUnavailable(readings, policy, now))
                 : new MetricReading(
                     policy.Metric,
                     winner.Reading.Value,
@@ -54,8 +54,46 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
                     $"Selected from {winner.Reading.Descriptor.Provider} with ranking score {winner.Score}.");
         }
 
-        return new MetricSnapshot(now, metrics);
+        var fans = readings
+            .Where(reading => IsValidFan(reading, now))
+            .GroupBy(
+                reading => $"{reading.Descriptor.Provider}|{reading.Descriptor.SensorId}",
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(reading => reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase))
+                .First())
+            .OrderBy(reading => FanHardwareRank(reading.Descriptor.HardwareKind))
+            .ThenBy(reading => reading.Descriptor.HardwareName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(reading => reading.Descriptor.SensorName, StringComparer.OrdinalIgnoreCase)
+            .Select(reading => new FanReading(
+                reading.Descriptor.SensorId,
+                reading.Descriptor.SensorName,
+                reading.Descriptor.HardwareName,
+                reading.Descriptor.HardwareKind,
+                reading.Value!.Value,
+                reading.Timestamp,
+                reading.Descriptor.Provider,
+                $"{reading.Descriptor.HardwareName} / {reading.Descriptor.SensorName}"))
+            .ToArray();
+
+        return new MetricSnapshot(now, metrics) { Fans = fans };
     }
+
+    private static bool IsValidFan(RawSensorReading reading, DateTimeOffset now) =>
+        reading.IsAvailable &&
+        reading.Descriptor.SensorKind == SensorKind.Fan &&
+        reading.Value is { } rpm &&
+        double.IsFinite(rpm) &&
+        rpm is >= 0 and <= 20_000 &&
+        now - reading.Timestamp <= StaleAfter;
+
+    private static int FanHardwareRank(HardwareKind kind) => kind switch
+    {
+        HardwareKind.Cpu => 0,
+        HardwareKind.GpuNvidia or HardwareKind.GpuAmd or HardwareKind.GpuIntel => 1,
+        HardwareKind.Motherboard or HardwareKind.Controller => 2,
+        _ => 3
+    };
 
     private static bool IsCandidate(RawSensorReading reading, Policy policy, DateTimeOffset now)
     {
@@ -63,6 +101,32 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
         if (now - reading.Timestamp > StaleAfter) return false;
         if (reading.Descriptor.SensorKind != policy.SensorKind || !policy.Hardware.Contains(reading.Descriptor.HardwareKind)) return false;
         return reading.Value >= policy.Minimum && reading.Value <= policy.Maximum;
+    }
+
+    private static string ExplainUnavailable(IReadOnlyList<RawSensorReading> readings, Policy policy, DateTimeOffset now)
+    {
+        var providerFailure = readings.FirstOrDefault(reading =>
+            policy.Hardware.Contains(reading.Descriptor.HardwareKind) &&
+            !reading.IsAvailable &&
+            !string.IsNullOrWhiteSpace(reading.Error));
+        if (providerFailure is not null)
+            return $"Hardware access failed: {providerFailure.Error}";
+
+        var compatible = readings
+            .Where(reading => reading.Descriptor.SensorKind == policy.SensorKind && policy.Hardware.Contains(reading.Descriptor.HardwareKind))
+            .ToArray();
+        if (compatible.Length == 0)
+            return "No compatible hardware sensor was exposed. Check firmware monitoring support and hardware-access permissions.";
+        if (compatible.Any(reading => now - reading.Timestamp > StaleAfter))
+            return "The compatible hardware sensor stopped updating and is now stale.";
+        if (compatible.All(reading => !reading.IsAvailable || reading.Value is null))
+            return "The hardware sensor is present but did not return a value.";
+
+        var values = string.Join(", ", compatible
+            .Where(reading => reading.Value.HasValue)
+            .Take(3)
+            .Select(reading => $"{reading.Descriptor.SensorName}={reading.Value:0.##}{reading.Descriptor.Unit}"));
+        return $"The hardware sensor returned implausible data ({values}); low-level sensor access may be unavailable.";
     }
 
     private static int Score(RawSensorReading reading, Policy policy)

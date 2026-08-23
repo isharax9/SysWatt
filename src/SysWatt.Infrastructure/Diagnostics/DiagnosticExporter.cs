@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SysWatt.Core.Sensors;
 
 namespace SysWatt.Infrastructure.Diagnostics;
@@ -14,7 +15,7 @@ public sealed class DiagnosticExporter : IDiagnosticExporter
     {
         var report = new
         {
-            schemaVersion = 1,
+            schemaVersion = 2,
             generatedAtUtc = DateTimeOffset.UtcNow,
             appVersion = typeof(DiagnosticExporter).Assembly.GetName().Version?.ToString(),
             operatingSystem = Environment.OSVersion.VersionString,
@@ -24,9 +25,12 @@ public sealed class DiagnosticExporter : IDiagnosticExporter
                 r.Descriptor.HardwareId, r.Descriptor.SensorKind, r.Descriptor.SensorName,
                 r.Descriptor.SensorId, r.Descriptor.Unit, r.Value, r.Timestamp, r.IsAvailable, r.Error
             }),
-            mappings = normalized.Metrics.Values
+            mappings = normalized.Metrics.Values,
+            fans = normalized.Fans
         };
         await using var stream = File.Create(path);
-        await JsonSerializer.SerializeAsync(stream, report, new JsonSerializerOptions { WriteIndented = true }, cancellationToken);
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        options.Converters.Add(new JsonStringEnumConverter());
+        await JsonSerializer.SerializeAsync(stream, report, options, cancellationToken);
     }
 }

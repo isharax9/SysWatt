@@ -4,16 +4,17 @@ namespace SysWatt.App.Windows;
 
 public sealed class SingleInstanceCoordinator : IDisposable
 {
-    private const string MutexName = "Local\\SysWatt-0F48330C-A9CE-401C-9F63-E696C96CE64B";
-    private const string PipeName = "SysWatt.Activation.0F48330C";
     private readonly Mutex _mutex;
+    private readonly string _pipeName;
     private CancellationTokenSource? _serverCancellation;
 
     public bool IsPrimary { get; }
 
-    public SingleInstanceCoordinator()
+    public SingleInstanceCoordinator(string? discriminator = null)
     {
-        _mutex = new Mutex(true, MutexName, out var created);
+        var suffix = string.IsNullOrWhiteSpace(discriminator) ? string.Empty : $".{discriminator}";
+        _pipeName = $"SysWatt.Activation.0F48330C{suffix}";
+        _mutex = new Mutex(true, $"Local\\SysWatt-0F48330C-A9CE-401C-9F63-E696C96CE64B{suffix}", out var created);
         IsPrimary = created;
     }
 
@@ -21,7 +22,7 @@ public sealed class SingleInstanceCoordinator : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            using var client = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out);
             await client.ConnectAsync(1000);
             await client.WriteAsync(new byte[] { 1 });
         }
@@ -35,13 +36,13 @@ public sealed class SingleInstanceCoordinator : IDisposable
         _ = ListenAsync(activate, _serverCancellation.Token);
     }
 
-    private static async Task ListenAsync(Action activate, CancellationToken cancellationToken)
+    private async Task ListenAsync(Action activate, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                await using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, 1,
+                await using var server = new NamedPipeServerStream(_pipeName, PipeDirection.In, 1,
                     PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                 await server.WaitForConnectionAsync(cancellationToken);
                 var buffer = new byte[1];

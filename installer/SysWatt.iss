@@ -25,6 +25,7 @@ CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
 LicenseFile=..\LICENSE
+SetupIconFile=..\src\SysWatt.App\Assets\SysWatt.ico
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "portable.flag,data\*"

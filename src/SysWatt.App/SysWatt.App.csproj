@@ -4,6 +4,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\SysWatt.ico</ApplicationIcon>
     <StartupObject>SysWatt.App.App</StartupObject>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
@@ -12,6 +13,8 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets\SysWatt-logo.png" />
+    <Resource Include="Assets\SysWatt.ico" />
     <ProjectReference Include="..\SysWatt.Core\SysWatt.Core.csproj" />
     <ProjectReference Include="..\SysWatt.Infrastructure\SysWatt.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />

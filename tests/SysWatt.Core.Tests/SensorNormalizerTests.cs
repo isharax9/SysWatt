@@ -31,11 +31,46 @@ public sealed class SensorNormalizerTests
     }
 
     [Fact]
+    public void RejectsZeroCpuTemperatureAndPackagePowerAsUnavailableHardwareData()
+    {
+        var result = _normalizer.Normalize(
+        [
+            Reading("temp", "Core (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 0),
+            Reading("power", "Package", HardwareKind.Cpu, SensorKind.Power, 0)
+        ], Now);
+
+        Assert.Null(result.Value(MetricKind.CpuTemperature));
+        Assert.Null(result.Value(MetricKind.CpuPower));
+        Assert.Contains("implausible", result[MetricKind.CpuTemperature].Explanation);
+        Assert.Contains("implausible", result[MetricKind.CpuPower].Explanation);
+    }
+
+    [Fact]
     public void ProviderPriorityBreaksOtherwiseEquivalentCandidates()
     {
         var fallback = Reading("fallback", "CPU total", HardwareKind.Cpu, SensorKind.Load, 20, "PerformanceCounter");
         var primary = Reading("primary", "CPU total", HardwareKind.Cpu, SensorKind.Load, 30);
         Assert.Equal(30, _normalizer.Normalize([fallback, primary], Now).Value(MetricKind.CpuUsage));
+    }
+
+    [Fact]
+    public void PreservesEveryFreshValidFanAsANamedReading()
+    {
+        var readings = new[]
+        {
+            Reading("/cpu/fan/0", "CPU Fan", HardwareKind.Controller, SensorKind.Fan, 1_225),
+            Reading("/gpu/fan/0", "GPU Fan", HardwareKind.GpuNvidia, SensorKind.Fan, 1_640),
+            Reading("/board/fan/2", "System Fan #2", HardwareKind.Motherboard, SensorKind.Fan, 880),
+            Reading("/board/fan/stale", "Stale Fan", HardwareKind.Motherboard, SensorKind.Fan, 900) with { Timestamp = Now.AddSeconds(-10) },
+            Reading("/board/fan/invalid", "Invalid Fan", HardwareKind.Motherboard, SensorKind.Fan, 25_000)
+        };
+
+        var fans = _normalizer.Normalize(readings, Now).Fans;
+
+        Assert.Equal(3, fans.Count);
+        Assert.Contains(fans, fan => fan.SensorId == "/cpu/fan/0" && fan.Rpm == 1_225);
+        Assert.Contains(fans, fan => fan.SensorId == "/gpu/fan/0" && fan.Rpm == 1_640);
+        Assert.Contains(fans, fan => fan.SensorId == "/board/fan/2" && fan.Rpm == 880);
     }
 
     private static RawSensorReading Reading(string id, string name, HardwareKind hardware, SensorKind sensor, double? value, string provider = "LibreHardwareMonitor") =>

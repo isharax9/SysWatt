@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -33,7 +34,15 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _singleInstance = new SingleInstanceCoordinator();
+        var isSettingsPreview = e.Args.Any(a => a.Equals("--preview-settings", StringComparison.OrdinalIgnoreCase));
+        var isSmokeTest = e.Args.Any(a => a.Equals("--smoke-test", StringComparison.OrdinalIgnoreCase));
+        var sensorDiagnosticArgument = Array.FindIndex(e.Args, a => a.Equals("--diagnose-sensors", StringComparison.OrdinalIgnoreCase));
+        var isSensorDiagnostic = sensorDiagnosticArgument >= 0;
+        var instanceDiscriminator = isSettingsPreview ? "SettingsPreview"
+            : isSmokeTest ? "SmokeTest"
+            : isSensorDiagnostic ? "SensorDiagnostic"
+            : null;
+        _singleInstance = new SingleInstanceCoordinator(instanceDiscriminator);
         if (!_singleInstance.IsPrimary)
         {
             await _singleInstance.SignalPrimaryAsync();
@@ -66,6 +75,25 @@ public partial class App : System.Windows.Application
             await _host.StartAsync();
 
             var monitoring = _host.Services.GetRequiredService<IMonitoringService>();
+            if (isSensorDiagnostic)
+            {
+                var outputPath = sensorDiagnosticArgument + 1 < e.Args.Length && !e.Args[sensorDiagnosticArgument + 1].StartsWith("--", StringComparison.Ordinal)
+                    ? Path.GetFullPath(e.Args[sensorDiagnosticArgument + 1])
+                    : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SysWatt", $"sensor-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                var diagnosticStartedAt = DateTimeOffset.UtcNow;
+                await monitoring.StartAsync();
+                var timeout = DateTimeOffset.UtcNow.AddSeconds(30);
+                while ((monitoring.LastRawReadings.Count == 0 || monitoring.Current.Timestamp <= diagnosticStartedAt) && DateTimeOffset.UtcNow < timeout)
+                    await Task.Delay(200);
+                await _host.Services.GetRequiredService<IDiagnosticExporter>()
+                    .ExportAsync(outputPath, monitoring.LastRawReadings, monitoring.Current);
+                _singleInstance.Dispose();
+                _singleInstance = null;
+                Shutdown();
+                return;
+            }
+
             _dashboard = new DashboardWindow { DataContext = _host.Services.GetRequiredService<DashboardViewModel>() };
             _dashboard.SettingsRequested += (_, _) => OpenSettings();
             _tray = new TrayIconService(monitoring, _settings);
@@ -76,9 +104,17 @@ public partial class App : System.Windows.Application
             _singleInstance.StartListening(() => Dispatcher.BeginInvoke(_dashboard.ShowNearTray));
             await monitoring.StartAsync();
 
-            if (e.Args.Any(a => a.Equals("--smoke-test", StringComparison.OrdinalIgnoreCase)))
+            if (isSmokeTest)
             {
                 await Task.Delay(2500);
+                await ExitAsync();
+                return;
+            }
+
+            if (e.Args.Any(a => a.Equals("--preview-settings", StringComparison.OrdinalIgnoreCase)))
+            {
+                OpenSettings();
+                await Task.Delay(15000);
                 await ExitAsync();
                 return;
             }
@@ -88,9 +124,15 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"SysWatt could not start.\n\n{ex.Message}", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Error);
+            var details = string.Join("\n→ ", EnumerateExceptionMessages(ex));
+            System.Windows.MessageBox.Show($"SysWatt could not start.\n\n{details}", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Error);
             await ExitAsync();
         }
+    }
+
+    private static IEnumerable<string> EnumerateExceptionMessages(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException!) yield return current.Message;
     }
 
     private void OpenSettings()
@@ -102,7 +144,9 @@ public partial class App : System.Windows.Application
             _host.Services.GetRequiredService<IStartupRegistrationService>(),
             _host.Services.GetRequiredService<IMonitoringService>());
         viewModel.Saved += (_, settings) => { _settings = settings; _tray?.ApplySettings(settings); };
-        _settingsWindow = new SettingsWindow(viewModel) { Owner = _dashboard };
+        _settingsWindow = new SettingsWindow(viewModel);
+        if (_dashboard.IsVisible) _settingsWindow.Owner = _dashboard;
+        else _settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         _settingsWindow.ExportDiagnosticsRequested += async (_, _) => await ExportDiagnosticsAsync();
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
@@ -161,11 +205,32 @@ public partial class App : System.Windows.Application
             {
                 var host = _host;
                 _host = null;
-                try { await host.Services.GetRequiredService<IMonitoringService>().StopAsync(); }
+                try
+                {
+                    await host.Services.GetRequiredService<IMonitoringService>()
+                        .StopAsync()
+                        .WaitAsync(TimeSpan.FromSeconds(5));
+                }
+                catch (TimeoutException) { }
                 catch (OperationCanceledException) { }
-                await host.StopAsync();
-                if (host is IAsyncDisposable asyncHost) await asyncHost.DisposeAsync();
-                else host.Dispose();
+
+                using (var stopTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3)))
+                {
+                    try { await host.StopAsync(stopTimeout.Token); }
+                    catch (OperationCanceledException) when (stopTimeout.IsCancellationRequested) { }
+                }
+
+                try
+                {
+                    await Task.Run(async () =>
+                    {
+                        if (host is IAsyncDisposable asyncHost)
+                            await asyncHost.DisposeAsync();
+                        else
+                            host.Dispose();
+                    }).WaitAsync(TimeSpan.FromSeconds(3));
+                }
+                catch (TimeoutException) { }
             }
         }
         finally
@@ -173,6 +238,7 @@ public partial class App : System.Windows.Application
             _singleInstance?.Dispose();
             _singleInstance = null;
             Shutdown();
+            Environment.Exit(0);
         }
     }
 }

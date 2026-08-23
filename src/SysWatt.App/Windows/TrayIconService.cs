@@ -35,10 +35,23 @@ public sealed class TrayIconService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
         _notifyIcon = new NotifyIcon { ContextMenuStrip = menu, Text = "SysWatt · waiting for sensors", Visible = true };
-        UpdateIcon(null, "SW");
+        SetBrandIcon();
         _notifyIcon.MouseUp += (_, e) => { if (e.Button == MouseButtons.Left) OpenRequested?.Invoke(this, EventArgs.Empty); };
         monitoring.SnapshotUpdated += OnSnapshotUpdated;
         monitoring.AlertTriggered += OnAlertTriggered;
+    }
+
+    private void SetBrandIcon()
+    {
+        try
+        {
+            var executable = Environment.ProcessPath;
+            var icon = executable is null ? null : Icon.ExtractAssociatedIcon(executable);
+            if (icon is null) { UpdateIcon(null, "SW"); return; }
+            _renderedIcon = icon;
+            _notifyIcon.Icon = icon;
+        }
+        catch { UpdateIcon(null, "SW"); }
     }
 
     public void ApplySettings(AppSettings settings)

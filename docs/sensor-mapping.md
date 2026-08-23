@@ -17,7 +17,9 @@ The winning normalized reading records its source sensor ID/name and ranking sco
 ## Current limitations
 
 - Hardware firmware and drivers decide which values are exposed. Component power is often absent on older or restricted systems.
-- The first compatible fan is shown in the compact V1 card; the diagnostics report retains all fans.
+- Every valid RPM sensor exposed by LibreHardwareMonitor is kept with its hardware and sensor name and shown in the dashboard. Some graphics cards expose one aggregate RPM reading even when they have multiple physical fans.
+- CPU-cooler and case fans are normally reported through motherboard/Super I/O headers. SysWatt can identify only the header labels supplied by firmware (for example `CPU Fan`, `System Fan #2`), and cannot display fans that are connected only to an unmonitored hub or powered directly from the PSU.
+- CPU package temperature/power and motherboard fan access can depend on the installed hardware driver and Windows permissions. Diagnostics now retain provider and per-device update failures instead of silently discarding them.
 - Storage activity/temperature depends on available LibreHardwareMonitor sensors.
 - The Windows fallback currently supplies memory load only and never overrides a higher-ranked primary reading.
 - No support claim is made for a device until it has been manually tested.

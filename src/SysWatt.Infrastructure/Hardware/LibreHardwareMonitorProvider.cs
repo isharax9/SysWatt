@@ -81,6 +81,16 @@ public sealed class LibreHardwareMonitorProvider : IRawSensorProvider
         {
             _logger.LogWarning(ex, "Unable to update hardware {HardwareId} ({HardwareType}); continuing with other devices.",
                 hardware.Identifier, hardware.HardwareType);
+            var descriptor = new SensorDescriptor(
+                Name,
+                hardware.Identifier.ToString(),
+                hardware.Name,
+                MapHardware(hardware.HardwareType),
+                $"{hardware.Identifier}/update-error",
+                "Hardware update failure",
+                SensorKind.Unknown,
+                string.Empty);
+            destination.Add(new RawSensorReading(descriptor, null, now, false, ex.Message));
         }
 
         foreach (var child in hardware.SubHardware)

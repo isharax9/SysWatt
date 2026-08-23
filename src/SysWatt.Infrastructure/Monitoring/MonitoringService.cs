@@ -47,7 +47,7 @@ public sealed class MonitoringService : IMonitoringService
         {
             if (_loop is not null) return Task.CompletedTask;
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _loop = RunAsync(_cts.Token);
+            _loop = Task.Run(() => RunAsync(_cts.Token), CancellationToken.None);
         }
         return Task.CompletedTask;
     }
@@ -78,7 +78,20 @@ public sealed class MonitoringService : IMonitoringService
                 all.AddRange(await provider.ReadAsync(cancellationToken).ConfigureAwait(false));
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-            catch (Exception ex) { _logger.LogWarning(ex, "Sensor provider {Provider} failed; other providers remain active.", provider.Name); }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Sensor provider {Provider} failed; other providers remain active.", provider.Name);
+                var descriptor = new SensorDescriptor(
+                    provider.Name,
+                    $"/{provider.Name}/provider-error",
+                    provider.Name,
+                    HardwareKind.Unknown,
+                    $"/{provider.Name}/provider-error",
+                    "Provider read failure",
+                    SensorKind.Unknown,
+                    string.Empty);
+                all.Add(new RawSensorReading(descriptor, null, DateTimeOffset.UtcNow, false, ex.Message));
+            }
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -89,7 +102,7 @@ public sealed class MonitoringService : IMonitoringService
         var metrics = normalized.Metrics.ToDictionary(x => x.Key, x => x.Value);
         metrics[MetricKind.EstimatedDcPower] = new(MetricKind.EstimatedDcPower, estimate.EstimatedDcWatts, "W", now, false, null, "SysWatt power model", estimate.Confidence);
         metrics[MetricKind.EstimatedWallPower] = new(MetricKind.EstimatedWallPower, estimate.EstimatedWallWatts, "W", now, false, null, "SysWatt power model", $"{estimate.Confidence} {estimate.Formula}");
-        Current = new MetricSnapshot(now, metrics);
+        Current = new MetricSnapshot(now, metrics) { Fans = normalized.Fans };
         History.Add(Current);
         SnapshotUpdated?.Invoke(this, Current);
         foreach (var alert in _alerts.Evaluate(settings.Alerts, Current)) AlertTriggered?.Invoke(this, alert);

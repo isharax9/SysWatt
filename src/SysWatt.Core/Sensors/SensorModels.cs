@@ -42,8 +42,19 @@ public sealed record MetricReading(
         new(metric, null, unit, timestamp, false, null, null, reason);
 }
 
+public sealed record FanReading(
+    string SensorId,
+    string SensorName,
+    string HardwareName,
+    HardwareKind HardwareKind,
+    double Rpm,
+    DateTimeOffset Timestamp,
+    string Provider,
+    string Explanation);
+
 public sealed record MetricSnapshot(DateTimeOffset Timestamp, IReadOnlyDictionary<MetricKind, MetricReading> Metrics)
 {
+    public IReadOnlyList<FanReading> Fans { get; init; } = [];
     public MetricReading this[MetricKind metric] => Metrics.TryGetValue(metric, out var value)
         ? value
         : MetricReading.Unavailable(metric, MetricUnits.For(metric), Timestamp, "No compatible sensor was detected.");
