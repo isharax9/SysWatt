@@ -54,15 +54,15 @@ public sealed class SensorNormalizerTests
     }
 
     [Fact]
-    public void HwinfoSharedMemoryWinsWhenItPublishesAValidEquivalentSensor()
+    public void EmbeddedHardwareSensorWinsOverWindowsFallbackWhenBothAreValid()
     {
-        var direct = Reading("direct", "Core (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 47);
-        var shared = Reading("shared", "CPU (Tctl/Tdie)", HardwareKind.Cpu, SensorKind.Temperature, 51, "HWiNFO Shared Memory");
+        var direct = Reading("direct", "CPU total", HardwareKind.Cpu, SensorKind.Load, 47);
+        var fallback = Reading("fallback", "CPU total", HardwareKind.Cpu, SensorKind.Load, 51, "Windows Native Telemetry");
 
-        var result = _normalizer.Normalize([direct, shared], Now)[MetricKind.CpuTemperature];
+        var result = _normalizer.Normalize([direct, fallback], Now)[MetricKind.CpuUsage];
 
-        Assert.Equal(51, result.Value);
-        Assert.Equal("shared", result.SourceSensorId);
+        Assert.Equal(47, result.Value);
+        Assert.Equal("direct", result.SourceSensorId);
     }
 
     [Fact]

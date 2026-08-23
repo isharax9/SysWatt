@@ -1,98 +1,114 @@
 <Window x:Class="SysWatt.App.Views.DashboardWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:controls="clr-namespace:SysWatt.App.Controls"
-        Title="SysWatt" Width="480" Height="720" ResizeMode="NoResize" WindowStyle="None"
-        AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" Topmost="True"
+        Title="SysWatt — System &amp; Energy Monitor" Width="1320" Height="860" MinWidth="1080" MinHeight="700"
+        WindowStyle="None" ResizeMode="CanResize" WindowStartupLocation="CenterScreen" Background="{StaticResource WindowBackground}" ShowInTaskbar="True"
         Icon="/SysWatt.App;component/Assets/SysWatt.ico">
-  <Border Background="{StaticResource WindowBackground}" BorderBrush="#34414A" BorderThickness="1" CornerRadius="10" Padding="16">
+  <Window.Resources>
+    <Style x:Key="SectionCard" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="9"/><Setter Property="Padding" Value="18"/>
+    </Style>
+    <Style x:Key="KpiCard" TargetType="Border" BasedOn="{StaticResource SectionCard}">
+      <Setter Property="Padding" Value="16"/><Setter Property="Margin" Value="0,0,12,0"/>
+    </Style>
+    <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="15,11"/><Setter Property="Margin" Value="0,2"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+  </Window.Resources>
+  <Border BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" Background="{StaticResource WindowBackground}">
     <Grid>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
-      </Grid.RowDefinitions>
-      <Grid Grid.Row="0" Margin="0,0,0,14">
-        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal">
-          <Image Source="/SysWatt.App;component/Assets/SysWatt-logo.png" Width="42" Height="42" Margin="0,0,11,0" />
-          <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="SYSWATT" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" FontSize="19"/>
-            <TextBlock Text="REAL-TIME SYSTEM TELEMETRY" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="218"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="#0E151B" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+        <Grid Margin="14,0"><Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="7,0,0,0">
+            <Image Source="/SysWatt.App;component/Assets/SysWatt-logo.png" Width="42" Height="42" Margin="0,0,11,0"/>
+            <StackPanel VerticalAlignment="Center"><TextBlock Text="SYSWATT" Foreground="{StaticResource AccentBrush}" FontSize="18" FontWeight="Bold"/><TextBlock Text="STANDALONE MONITOR" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel>
           </StackPanel>
-        </StackPanel>
-        <TextBlock Grid.Column="1" Text="{Binding UpdatedText}" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center"/>
-      </Grid>
-      <StackPanel Grid.Row="1">
-        <Border Background="#202A2E" CornerRadius="5" Padding="9" Margin="0,0,0,8" Visibility="{Binding AlertVisibility}">
-          <TextBlock Text="{Binding ActiveAlert}" Foreground="#FFB869" TextWrapping="Wrap"/>
-        </Border>
-        <Border Background="#2A241A" BorderBrush="#59482B" BorderThickness="1" CornerRadius="5" Padding="9" Margin="0,0,0,10" Visibility="{Binding SensorAccessVisibility}">
-          <TextBlock Text="{Binding SensorAccessNotice}" Foreground="#E8C681" FontSize="9" TextWrapping="Wrap"/>
-        </Border>
-      </StackPanel>
-      <Grid Grid.Row="2">
-        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-        <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="CPU LOAD" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding CpuUsage}" FontSize="23" FontWeight="SemiBold"/><controls:Sparkline Height="27" Values="{Binding CpuUsageHistory}" Stroke="{StaticResource AccentBrush}"/></StackPanel></Border>
-        <Border Grid.Column="1" Style="{StaticResource MetricCard}" ToolTip="{Binding CpuTemperatureStatus}"><StackPanel><TextBlock Text="CPU TEMP" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding CpuTemperature}" FontSize="23" FontWeight="SemiBold"/><controls:Sparkline Height="27" Values="{Binding CpuTemperatureHistory}" Stroke="#67B7FF"/></StackPanel></Border>
-        <Border Grid.Column="2" Style="{StaticResource MetricCard}" ToolTip="{Binding CpuPowerStatus}"><StackPanel><TextBlock Text="CPU POWER" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding CpuPower}" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="HARDWARE SENSOR" Foreground="{StaticResource MutedBrush}" FontSize="8" Margin="0,8,0,0"/></StackPanel></Border>
-      </Grid>
-      <Grid Grid.Row="3">
-        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-        <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="GPU LOAD" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding GpuUsage}" FontSize="23" FontWeight="SemiBold"/><controls:Sparkline Height="27" Values="{Binding GpuUsageHistory}" Stroke="{StaticResource AccentBrush}"/></StackPanel></Border>
-        <Border Grid.Column="1" Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="GPU TEMP" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding GpuTemperature}" FontSize="23" FontWeight="SemiBold"/><controls:Sparkline Height="27" Values="{Binding GpuTemperatureHistory}" Stroke="#67B7FF"/></StackPanel></Border>
-        <Border Grid.Column="2" Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="GPU POWER" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding GpuPower}" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="HARDWARE SENSOR" Foreground="{StaticResource MutedBrush}" FontSize="8" Margin="0,8,0,0"/></StackPanel></Border>
-      </Grid>
-      <Grid Grid.Row="4" Margin="0,3,0,10">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-        <Grid>
-          <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-          <StackPanel><TextBlock Text="MEMORY" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding MemoryUsage}" FontSize="16"/></StackPanel>
-          <StackPanel Grid.Column="1"><TextBlock Text="STORAGE ACTIVITY" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding StorageActivity}" FontSize="16"/></StackPanel>
-        </Grid>
-        <Border Grid.Row="1" Background="#171F23" BorderBrush="#34414A" BorderThickness="1" CornerRadius="6" Padding="9" Margin="0,9,0,0">
-          <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <Grid Margin="0,0,0,7">
-              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-              <TextBlock Text="FAN SPEEDS" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="10"/>
-              <TextBlock Grid.Column="1" Text="{Binding FanSummary}" Foreground="{StaticResource MutedBrush}" FontSize="9"/>
-            </Grid>
-            <ScrollViewer Grid.Row="1" MaxHeight="90" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-              <ItemsControl ItemsSource="{Binding Fans}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border Width="136" Background="#202A2E" CornerRadius="5" Padding="8" Margin="0,0,6,6" ToolTip="{Binding Details}">
-                      <StackPanel>
-                        <TextBlock Text="{Binding Category}" Foreground="{StaticResource AccentBrush}" FontSize="8" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource MutedBrush}" FontSize="9" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Value}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0"/>
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-          </Grid>
-        </Border>
-      </Grid>
-      <Border Grid.Row="5" Background="#13251F" BorderBrush="#315847" BorderThickness="1" CornerRadius="8" Padding="14">
-        <Grid>
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="45"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <TextBlock Text="ESTIMATED TOTAL SETUP POWER" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="11"/>
-          <Grid Grid.Row="1" Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="{Binding EstimatedWallPower}" FontSize="37" FontWeight="Bold"/><TextBlock Text="ESTIMATED SETUP WALL DRAW" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding EstimatedDcPower}" FontSize="20"/><TextBlock Text="ESTIMATED DC LOAD" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel>
-          </Grid>
-          <controls:Sparkline Grid.Row="2" Values="{Binding PowerHistory}" Stroke="{StaticResource AccentBrush}" Margin="0,5"/>
-          <TextBlock Grid.Row="3" Text="{Binding EstimateStatus}" Foreground="{StaticResource MutedBrush}" FontSize="9" TextWrapping="Wrap"/>
+          <StackPanel Grid.Row="1" Margin="0,18,0,0">
+            <TextBlock Text="WORKSPACE" Foreground="{StaticResource MutedBrush}" FontSize="9" FontWeight="Bold" Margin="12,0,0,9"/>
+            <Button Style="{StaticResource NavButton}" Content="▦   Dashboard" Background="#183129" Foreground="{StaticResource AccentBrush}"/>
+            <Button Style="{StaticResource NavButton}" Content="⌁   Performance" IsHitTestVisible="False"/>
+            <Button Style="{StaticResource NavButton}" Content="▰   Storage" IsHitTestVisible="False"/>
+            <Button Style="{StaticResource NavButton}" Content="◉   Cooling" IsHitTestVisible="False"/>
+            <Button Style="{StaticResource NavButton}" Content="⚡   Energy history" IsHitTestVisible="False"/>
+          </StackPanel>
+          <StackPanel Grid.Row="2" Margin="0,0,0,14">
+            <Border Background="#11271F" BorderBrush="#275543" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,10">
+              <StackPanel><TextBlock Text="COLLECTOR STATUS" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold"/><TextBlock Text="●  Native telemetry active" Margin="0,7,0,0" FontSize="11"/><TextBlock Text="No HWiNFO process required" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="14,3,0,0"/></StackPanel>
+            </Border>
+            <Button Content="Settings" Click="Settings_Click" HorizontalContentAlignment="Left"/>
+          </StackPanel>
         </Grid>
       </Border>
-      <Grid Grid.Row="6" Margin="0,14,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <TextBlock Text="Five-minute session history · 1 s samples" Foreground="{StaticResource MutedBrush}" FontSize="9" VerticalAlignment="Center"/>
-        <Button Grid.Column="1" Content="Settings" Click="Settings_Click"/>
+
+      <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="64"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+          <Grid Margin="24,0,8,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center"><TextBlock Text="System dashboard" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Real-time hardware, activity, and energy intelligence" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,2,0,0"/></StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+              <TextBlock Text="●" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0"/><TextBlock Text="{Binding UpdatedText}" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center"/>
+              <Button x:Name="CustomizeButton" Content="Customize" Margin="18,0,0,0" Click="Customize_Click"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal"><Button Content="—" Style="{StaticResource WindowControlButton}" Click="Minimize_Click"/><Button Content="□" Style="{StaticResource WindowControlButton}" Click="Maximize_Click"/><Button Content="×" Style="{StaticResource WindowControlButton}" Click="Close_Click"/></StackPanel>
+          </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="24,22,24,32">
+            <Border Background="#35271B" BorderBrush="#66492C" BorderThickness="1" CornerRadius="7" Padding="11" Margin="0,0,0,12" Visibility="{Binding AlertVisibility}"><TextBlock Text="{Binding ActiveAlert}" Foreground="#FFBE72"/></Border>
+            <Border Background="#18231F" BorderBrush="#2B4C40" BorderThickness="1" CornerRadius="7" Padding="11" Margin="0,0,0,18" Visibility="{Binding SensorAccessVisibility}"><TextBlock Text="{Binding SensorAccessNotice}" Foreground="#C8DDD5" FontSize="10" TextWrapping="Wrap"/></Border>
+
+            <StackPanel Visibility="{Binding SystemOverviewVisibility}">
+              <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                <Border Style="{StaticResource KpiCard}"><StackPanel><TextBlock Text="TOTAL WALL POWER" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding EstimatedWallPower}" FontSize="31" FontWeight="Bold" Margin="0,7,0,1"/><TextBlock Text="LIVE SETUP DRAW" Foreground="{StaticResource AccentBrush}" FontSize="9"/></StackPanel></Border>
+                <Border Grid.Column="1" Style="{StaticResource KpiCard}"><StackPanel><TextBlock Text="CPU" Foreground="{StaticResource MutedBrush}" FontSize="10"/><StackPanel Orientation="Horizontal" Margin="0,7,0,1"><TextBlock Text="{Binding CpuUsage}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="{Binding CpuTemperature}" FontSize="16" Margin="14,8,0,0" Foreground="#63B7FF"/></StackPanel><TextBlock Text="{Binding CpuPower}" Foreground="{StaticResource AccentBrush}" FontSize="10"/></StackPanel></Border>
+                <Border Grid.Column="2" Style="{StaticResource KpiCard}"><StackPanel><TextBlock Text="GPU" Foreground="{StaticResource MutedBrush}" FontSize="10"/><StackPanel Orientation="Horizontal" Margin="0,7,0,1"><TextBlock Text="{Binding GpuUsage}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="{Binding GpuTemperature}" FontSize="16" Margin="14,8,0,0" Foreground="#A986FF"/></StackPanel><TextBlock Text="{Binding GpuPower}" Foreground="{StaticResource AccentBrush}" FontSize="10"/></StackPanel></Border>
+                <Border Grid.Column="3" Style="{StaticResource SectionCard}"><StackPanel><TextBlock Text="TODAY'S ENERGY" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding TodayEnergy}" FontSize="27" FontWeight="SemiBold" Margin="0,7,0,1"/><TextBlock Text="1 unit = 1 kWh" Foreground="{StaticResource AccentBrush}" FontSize="10"/></StackPanel></Border>
+              </Grid>
+            </StackPanel>
+
+            <StackPanel Visibility="{Binding PerformanceChartsVisibility}">
+              <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="PERFORMANCE" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold"/><TextBlock Grid.Column="1" Text="15-minute rolling window · 1-second samples" Foreground="{StaticResource MutedBrush}" FontSize="9"/></Grid>
+              <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                <Border Style="{StaticResource SectionCard}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="190"/></Grid.RowDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="CPU UTILIZATION" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Processor total" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding CpuUsage}" FontSize="24" FontWeight="SemiBold"/></Grid><controls:TelemetryChart Grid.Row="1" Values="{Binding CpuUsageHistory}" Stroke="{StaticResource AccentBrush}" Unit="%" Minimum="0" Maximum="100" Margin="0,12,0,0"/></Grid></Border>
+                <Border Grid.Column="2" Style="{StaticResource SectionCard}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="190"/></Grid.RowDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="GPU UTILIZATION" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Graphics core" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding GpuUsage}" FontSize="24" FontWeight="SemiBold"/></Grid><controls:TelemetryChart Grid.Row="1" Values="{Binding GpuUsageHistory}" Stroke="#A986FF" Unit="%" Minimum="0" Maximum="100" Margin="0,12,0,0"/></Grid></Border>
+              </Grid>
+            </StackPanel>
+
+            <Grid Margin="0,0,0,20" Visibility="{Binding StorageVisibility}"><Grid.ColumnDefinitions><ColumnDefinition Width="1.05*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="0.95*"/></Grid.ColumnDefinitions>
+              <Border Style="{StaticResource SectionCard}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="170"/></Grid.RowDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="STORAGE ACTIVITY" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Windows physical-disk counters" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding StorageActivity}" FontSize="24" FontWeight="SemiBold"/></Grid><controls:TelemetryChart Grid.Row="1" Values="{Binding StorageActivityHistory}" Stroke="#59B7FF" Unit="%" Minimum="0" Maximum="100" Margin="0,10,0,0"/></Grid></Border>
+              <Border Grid.Column="2" Style="{StaticResource SectionCard}"><StackPanel><TextBlock Text="STORAGE TELEMETRY" FontSize="12" FontWeight="SemiBold"/><Grid Margin="0,19,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="72"/><RowDefinition Height="72"/></Grid.RowDefinitions>
+                <StackPanel><TextBlock Text="READ" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding StorageReadRate}" FontSize="20" Margin="0,5,0,0"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="WRITE" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding StorageWriteRate}" FontSize="20" Margin="0,5,0,0"/></StackPanel>
+                <StackPanel Grid.Row="1"><TextBlock Text="MODELED DRAW" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding StoragePower}" FontSize="20" Margin="0,5,0,0"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="DRIVE TEMP" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding StorageTemperature}" FontSize="20" Margin="0,5,0,0"/></StackPanel>
+              </Grid></StackPanel></Border>
+            </Grid>
+
+            <Border Style="{StaticResource SectionCard}" Margin="0,0,0,20" Visibility="{Binding CoolingVisibility}"><StackPanel>
+              <Grid Margin="0,0,0,13"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="COOLING" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Motherboard and GPU fan channels" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding FanSummary}" Foreground="{StaticResource MutedBrush}" FontSize="10"/></Grid>
+              <ItemsControl ItemsSource="{Binding Fans}"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="86"/><ColumnDefinition Width="210"/><ColumnDefinition/><ColumnDefinition Width="92"/></Grid.ColumnDefinitions><Border Background="#17382D" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left"><TextBlock Text="{Binding Category}" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Hardware}" Foreground="{StaticResource MutedBrush}" FontSize="9" TextTrimming="CharacterEllipsis"/></StackPanel><ProgressBar Grid.Column="2" Value="{Binding GaugePercent}" Height="7" Margin="18,0" VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" Background="#27343C" BorderThickness="0"/><TextBlock Grid.Column="3" Text="{Binding Value}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </StackPanel></Border>
+
+            <StackPanel Visibility="{Binding EnergyVisibility}">
+              <TextBlock Text="ENERGY &amp; CONSUMPTION" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,10"/>
+              <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.45*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="0.75*"/></Grid.ColumnDefinitions>
+                <Border Style="{StaticResource SectionCard}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="220"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="30-DAY ENERGY" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Daily consumption stored locally in SQLite" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal"><StackPanel Margin="0,0,28,0"><TextBlock Text="7 DAYS" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding WeekEnergy}" FontSize="17"/></StackPanel><StackPanel><TextBlock Text="THIS MONTH" Foreground="{StaticResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding MonthEnergy}" FontSize="17"/></StackPanel></StackPanel></Grid><controls:TelemetryChart Grid.Row="1" Values="{Binding DailyEnergyHistory}" Stroke="#F0B45A" Unit=" kWh" Minimum="0" Margin="0,12,0,0"/><TextBlock Grid.Row="2" Text="Energy is integrated from wall watts over elapsed time. Gaps longer than five minutes are not counted." Foreground="{StaticResource MutedBrush}" FontSize="9" TextWrapping="Wrap"/></Grid></Border>
+                <Border Grid.Column="2" Style="{StaticResource SectionCard}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions><TextBlock Text="DAILY CALENDAR" FontSize="12" FontWeight="SemiBold"/><Calendar Grid.Row="1" SelectedDate="{Binding SelectedEnergyDate}" DisplayDateEnd="{x:Static sys:DateTime.Today}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}" Margin="-7,10,-7,8"/><Border Grid.Row="2" Background="#11251F" BorderBrush="#295542" BorderThickness="1" CornerRadius="7" Padding="14"><StackPanel><TextBlock Text="SELECTED DAY" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold"/><TextBlock Text="{Binding SelectedDayEnergy}" FontSize="24" FontWeight="SemiBold" Margin="0,7,0,2"/><TextBlock Text="{Binding SelectedDayDetails}" Foreground="{StaticResource MutedBrush}" FontSize="9"/></StackPanel></Border></Grid></Border>
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Popup x:Name="CustomizePopup" Placement="Bottom" PlacementTarget="{Binding ElementName=CustomizeButton}" StaysOpen="False" AllowsTransparency="True">
+          <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,6,0,0" Width="230">
+            <StackPanel><TextBlock Text="DASHBOARD SECTIONS" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="Bold" Margin="0,0,0,12"/><CheckBox Content="System overview" IsChecked="{Binding ShowSystemOverview}" Margin="0,5"/><CheckBox Content="Performance charts" IsChecked="{Binding ShowPerformanceCharts}" Margin="0,5"/><CheckBox Content="Storage telemetry" IsChecked="{Binding ShowStorage}" Margin="0,5"/><CheckBox Content="Cooling channels" IsChecked="{Binding ShowCooling}" Margin="0,5"/><CheckBox Content="Energy history" IsChecked="{Binding ShowEnergy}" Margin="0,5"/><TextBlock Text="Your layout is saved automatically." Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,12,0,0"/></StackPanel>
+          </Border>
+        </Popup>
       </Grid>
     </Grid>
   </Border>

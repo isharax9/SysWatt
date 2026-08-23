@@ -67,6 +67,15 @@ public sealed class SettingsViewModel : ViewModelBase
     private double _externalPeripheralWatts;
     private double _otherWallWatts;
     private double _efficiencyPercent;
+    private double _cpuIdleWatts;
+    private double _cpuPeakWatts;
+    private double _gpuIdleWatts;
+    private double _gpuPeakWatts;
+    private int _storageDeviceCount;
+    private double _storageIdleWattsPerDevice;
+    private double _storageThroughputCeilingMBps;
+    private readonly DashboardLayoutSettings _dashboardLayout;
+    private readonly bool _trayDashboardPinned;
     private string _accentColor;
     private AlertRuleViewModel? _selectedAlert;
     private string? _error;
@@ -88,6 +97,13 @@ public sealed class SettingsViewModel : ViewModelBase
     public double ExternalPeripheralWatts { get => _externalPeripheralWatts; set => Set(ref _externalPeripheralWatts, value); }
     public double OtherWallWatts { get => _otherWallWatts; set => Set(ref _otherWallWatts, value); }
     public double EfficiencyPercent { get => _efficiencyPercent; set => Set(ref _efficiencyPercent, value); }
+    public double CpuIdleWatts { get => _cpuIdleWatts; set => Set(ref _cpuIdleWatts, value); }
+    public double CpuPeakWatts { get => _cpuPeakWatts; set => Set(ref _cpuPeakWatts, value); }
+    public double GpuIdleWatts { get => _gpuIdleWatts; set => Set(ref _gpuIdleWatts, value); }
+    public double GpuPeakWatts { get => _gpuPeakWatts; set => Set(ref _gpuPeakWatts, value); }
+    public int StorageDeviceCount { get => _storageDeviceCount; set => Set(ref _storageDeviceCount, value); }
+    public double StorageIdleWattsPerDevice { get => _storageIdleWattsPerDevice; set => Set(ref _storageIdleWattsPerDevice, value); }
+    public double StorageThroughputCeilingMBps { get => _storageThroughputCeilingMBps; set => Set(ref _storageThroughputCeilingMBps, value); }
     public string AccentColor { get => _accentColor; set => Set(ref _accentColor, value); }
     public AlertRuleViewModel? SelectedAlert { get => _selectedAlert; set => Set(ref _selectedAlert, value); }
     public string? Error { get => _error; private set => Set(ref _error, value); }
@@ -107,6 +123,11 @@ public sealed class SettingsViewModel : ViewModelBase
         _usbPeripheralWatts = settings.Power.UsbPeripheralWatts; _displayWatts = settings.Power.DisplayWatts;
         _externalPeripheralWatts = settings.Power.ExternalPeripheralWatts; _otherWallWatts = settings.Power.OtherWallWatts;
         _efficiencyPercent = settings.Power.PsuEfficiency * 100; _accentColor = settings.AccentColor;
+        _cpuIdleWatts = settings.Power.CpuIdleWatts; _cpuPeakWatts = settings.Power.CpuPeakWatts;
+        _gpuIdleWatts = settings.Power.GpuIdleWatts; _gpuPeakWatts = settings.Power.GpuPeakWatts;
+        _storageDeviceCount = settings.Power.StorageDeviceCount; _storageIdleWattsPerDevice = settings.Power.StorageIdleWattsPerDevice;
+        _storageThroughputCeilingMBps = settings.Power.StorageThroughputCeilingMBps;
+        _dashboardLayout = settings.Dashboard; _trayDashboardPinned = settings.TrayDashboardPinned;
         Alerts = new(settings.Alerts.Select(a => new AlertRuleViewModel(a)));
         AddAlertCommand = new(() => { var row = new AlertRuleViewModel(AlertRule.CreateDefault() with { Name = "New alert" }); Alerts.Add(row); SelectedAlert = row; });
         DuplicateAlertCommand = new(() =>
@@ -133,7 +154,14 @@ public sealed class SettingsViewModel : ViewModelBase
             UsbPeripheralWatts,
             DisplayWatts,
             ExternalPeripheralWatts,
-            OtherWallWatts);
+            OtherWallWatts,
+            CpuIdleWatts,
+            CpuPeakWatts,
+            GpuIdleWatts,
+            GpuPeakWatts,
+            StorageDeviceCount,
+            StorageIdleWattsPerDevice,
+            StorageThroughputCeilingMBps);
         var validation = power.Validate().ToList();
         if (Alerts.Any(a => string.IsNullOrWhiteSpace(a.Name))) validation.Add("Every alert needs a name.");
         if (Alerts.Any(a => a.DurationSeconds < 0 || a.CooldownSeconds < 0)) validation.Add("Alert duration and cooldown cannot be negative.");
@@ -143,6 +171,7 @@ public sealed class SettingsViewModel : ViewModelBase
             var settings = new AppSettings
             {
                 TrayMetric = TrayMetric, StartWithWindows = StartWithWindows, StartMinimized = StartMinimized,
+                TrayDashboardPinned = _trayDashboardPinned, Dashboard = _dashboardLayout,
                 Power = power, AccentColor = AccentColor, Alerts = Alerts.Select(a => a.ToModel()).ToList()
             }.Sanitize();
             _startup.SetEnabled(settings.StartWithWindows);

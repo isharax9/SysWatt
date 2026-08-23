@@ -4,7 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="LibreHardwareMonitorLib" Version="0.9.6" />
-    <PackageVersion Include="Hwinfo.SharedMemory.Net" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.20" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />

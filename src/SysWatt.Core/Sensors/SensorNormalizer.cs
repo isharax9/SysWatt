@@ -25,6 +25,8 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
         new(MetricKind.GpuPower, SensorKind.Power, [HardwareKind.GpuNvidia, HardwareKind.GpuAmd, HardwareKind.GpuIntel], 0, 1500, ["board", "total", "gpu package", "package"], ["core", "rail"]),
         new(MetricKind.MemoryUsage, SensorKind.Load, [HardwareKind.Memory], 0, 100, ["memory", "used"], []),
         new(MetricKind.StorageActivity, SensorKind.Load, [HardwareKind.Storage], 0, 100, ["total activity", "activity"], ["read", "write"]),
+        new(MetricKind.StorageReadRate, SensorKind.Throughput, [HardwareKind.Storage], 0, 1_000_000, ["read rate", "read"], ["write"]),
+        new(MetricKind.StorageWriteRate, SensorKind.Throughput, [HardwareKind.Storage], 0, 1_000_000, ["write rate", "write"], ["read"]),
         new(MetricKind.StorageTemperature, SensorKind.Temperature, [HardwareKind.Storage], -10, 125, ["temperature", "composite"], []),
         new(MetricKind.FanSpeed, SensorKind.Fan, [HardwareKind.Motherboard, HardwareKind.Controller, HardwareKind.Cpu, HardwareKind.GpuNvidia, HardwareKind.GpuAmd], 0, 20000, ["cpu", "system", "fan"], [])
     ];
@@ -132,8 +134,8 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
     private static int Score(RawSensorReading reading, Policy policy)
     {
         var name = NormalizeName($"{reading.Descriptor.SensorName} {reading.Descriptor.SensorId}");
-        var score = reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) ? 120
-            : reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
+        var score = reading.Descriptor.Provider.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) ? 100
+            : reading.Descriptor.Provider.Equals("Windows Native Telemetry", StringComparison.OrdinalIgnoreCase) ? 95
             : 50;
         score += policy.Prefer.Select((hint, i) => name.Contains(hint, StringComparison.OrdinalIgnoreCase) ? 40 - (i * 3) : 0).Sum();
         score -= policy.Reject.Count(hint => name.Contains(hint, StringComparison.OrdinalIgnoreCase)) * 35;

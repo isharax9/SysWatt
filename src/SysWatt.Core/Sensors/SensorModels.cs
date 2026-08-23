@@ -5,7 +5,7 @@ public enum SensorKind { Unknown, Load, Temperature, Power, Fan, Data, Throughpu
 public enum MetricKind
 {
     CpuUsage, CpuTemperature, CpuPower, GpuUsage, GpuTemperature, GpuPower,
-    MemoryUsage, StorageActivity, StorageTemperature, FanSpeed,
+    MemoryUsage, StorageActivity, StorageReadRate, StorageWriteRate, StorageTemperature, StoragePower, FanSpeed,
     EstimatedDcPower, EstimatedWallPower
 }
 
@@ -69,8 +69,9 @@ public static class MetricUnits
     public static string For(MetricKind metric) => metric switch
     {
         MetricKind.CpuUsage or MetricKind.GpuUsage or MetricKind.MemoryUsage or MetricKind.StorageActivity => "%",
+        MetricKind.StorageReadRate or MetricKind.StorageWriteRate => "MB/s",
         MetricKind.CpuTemperature or MetricKind.GpuTemperature or MetricKind.StorageTemperature => "°C",
-        MetricKind.CpuPower or MetricKind.GpuPower or MetricKind.EstimatedDcPower or MetricKind.EstimatedWallPower => "W",
+        MetricKind.CpuPower or MetricKind.GpuPower or MetricKind.StoragePower or MetricKind.EstimatedDcPower or MetricKind.EstimatedWallPower => "W",
         MetricKind.FanSpeed => "RPM",
         _ => string.Empty
     };

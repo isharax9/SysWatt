@@ -1,5 +1,6 @@
 using SysWatt.Core.Alerts;
 using SysWatt.Core.History;
+using SysWatt.Core.Energy;
 using SysWatt.Core.Sensors;
 using SysWatt.Core.Settings;
 
@@ -10,6 +11,7 @@ public interface IMonitoringService : IAsyncDisposable
     MetricSnapshot Current { get; }
     IReadOnlyList<RawSensorReading> LastRawReadings { get; }
     ISessionHistory History { get; }
+    IEnergyHistoryStore EnergyHistory { get; }
     event EventHandler<MetricSnapshot>? SnapshotUpdated;
     event EventHandler<AlertEvent>? AlertTriggered;
     void ApplySettings(AppSettings settings);

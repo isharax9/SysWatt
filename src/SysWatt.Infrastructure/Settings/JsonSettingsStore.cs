@@ -67,7 +67,7 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         1 => settings with
         {
-            SchemaVersion = 2,
+            SchemaVersion = 4,
             Power = settings.Power with
             {
                 StorageWatts = 0,
@@ -77,10 +77,19 @@ public sealed class JsonSettingsStore : ISettingsStore
                 UsbPeripheralWatts = 0,
                 DisplayWatts = 0,
                 ExternalPeripheralWatts = 0,
-                OtherWallWatts = 0
+                OtherWallWatts = 0,
+                CpuIdleWatts = 22
             }
         },
-        2 => settings,
-        _ => settings with { SchemaVersion = 2 }
+        2 or 3 => settings with
+        {
+            SchemaVersion = 4,
+            Power = settings.Power with
+            {
+                CpuIdleWatts = Math.Abs(settings.Power.CpuIdleWatts - 8) < 0.001 ? 22 : settings.Power.CpuIdleWatts
+            }
+        },
+        4 => settings,
+        _ => settings with { SchemaVersion = 4 }
     };
 }

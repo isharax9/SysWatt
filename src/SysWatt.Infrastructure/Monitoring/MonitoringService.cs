@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SysWatt.Core.Alerts;
 using SysWatt.Core.History;
+using SysWatt.Core.Energy;
 using SysWatt.Core.Monitoring;
 using SysWatt.Core.Power;
 using SysWatt.Core.Sensors;
@@ -23,11 +24,12 @@ public sealed class MonitoringService : IMonitoringService
     public MetricSnapshot Current { get; private set; } = MetricSnapshot.Empty(DateTimeOffset.UtcNow);
     public IReadOnlyList<RawSensorReading> LastRawReadings { get; private set; } = [];
     public ISessionHistory History { get; }
+    public IEnergyHistoryStore EnergyHistory { get; }
     public event EventHandler<MetricSnapshot>? SnapshotUpdated;
     public event EventHandler<AlertEvent>? AlertTriggered;
 
     public MonitoringService(IEnumerable<IRawSensorProvider> providers, ISensorNormalizer normalizer,
-        IPowerEstimationService power, IAlertEvaluator alerts, ISessionHistory history,
+        IPowerEstimationService power, IAlertEvaluator alerts, ISessionHistory history, IEnergyHistoryStore energyHistory,
         AppSettings settings, ILogger<MonitoringService> logger)
     {
         _providers = providers.ToArray();
@@ -35,6 +37,7 @@ public sealed class MonitoringService : IMonitoringService
         _power = power;
         _alerts = alerts;
         History = history;
+        EnergyHistory = energyHistory;
         _settings = settings;
         _logger = logger;
     }
@@ -73,12 +76,6 @@ public sealed class MonitoringService : IMonitoringService
         var all = new List<RawSensorReading>();
         foreach (var provider in _providers)
         {
-            if (provider.Name.Equals("LibreHardwareMonitor", StringComparison.OrdinalIgnoreCase) &&
-                all.Any(reading => reading.Descriptor.Provider.Equals("HWiNFO Shared Memory", StringComparison.OrdinalIgnoreCase) && reading.IsAvailable))
-            {
-                _logger.LogDebug("HWiNFO is publishing sensors; skipping concurrent LibreHardwareMonitor hardware access for this cycle.");
-                continue;
-            }
             try
             {
                 all.AddRange(await provider.ReadAsync(cancellationToken).ConfigureAwait(false));
@@ -104,15 +101,31 @@ public sealed class MonitoringService : IMonitoringService
         LastRawReadings = all.ToArray();
         var normalized = _normalizer.Normalize(all, now);
         var settings = Volatile.Read(ref _settings);
-        var estimate = _power.Calculate(normalized.Value(MetricKind.CpuPower), normalized.Value(MetricKind.GpuPower), settings.Power);
+        var estimate = _power.Calculate(
+            normalized.Value(MetricKind.CpuPower), normalized.Value(MetricKind.GpuPower), settings.Power,
+            normalized.Value(MetricKind.CpuUsage), normalized.Value(MetricKind.GpuUsage), normalized.Value(MetricKind.StorageActivity),
+            normalized.Value(MetricKind.StorageReadRate), normalized.Value(MetricKind.StorageWriteRate));
         var metrics = normalized.Metrics.ToDictionary(x => x.Key, x => x.Value);
+        if (estimate.CpuIsModeled)
+            metrics[MetricKind.CpuPower] = ModeledPower(MetricKind.CpuPower, estimate.EffectiveCpuWatts, normalized.Value(MetricKind.CpuUsage), now);
+        if (estimate.GpuIsModeled)
+            metrics[MetricKind.GpuPower] = ModeledPower(MetricKind.GpuPower, estimate.EffectiveGpuWatts, normalized.Value(MetricKind.GpuUsage), now);
+        metrics[MetricKind.StoragePower] = new(MetricKind.StoragePower, estimate.EffectiveStorageWatts, "W", now, false, null,
+            "SysWatt activity-aware storage model", "Estimated from disk active time, read/write throughput, device count, idle draw, and configured active draw.");
         metrics[MetricKind.EstimatedDcPower] = new(MetricKind.EstimatedDcPower, estimate.EstimatedDcWatts, "W", now, false, null, "SysWatt power model", estimate.Confidence);
         metrics[MetricKind.EstimatedWallPower] = new(MetricKind.EstimatedWallPower, estimate.EstimatedWallWatts, "W", now, false, null, "SysWatt power model", $"{estimate.Confidence} {estimate.Formula}");
         Current = new MetricSnapshot(now, metrics) { Fans = normalized.Fans };
         History.Add(Current);
+        await EnergyHistory.RecordSampleAsync(now, estimate.EstimatedWallWatts, cancellationToken).ConfigureAwait(false);
         SnapshotUpdated?.Invoke(this, Current);
         foreach (var alert in _alerts.Evaluate(settings.Alerts, Current)) AlertTriggered?.Invoke(this, alert);
     }
+
+    private static MetricReading ModeledPower(MetricKind metric, double watts, double? usage, DateTimeOffset now) =>
+        new(metric, watts, "W", now, false, null, "SysWatt utilization model",
+            usage.HasValue
+                ? $"Estimated from {usage:0}% live utilization and the configured idle/peak power envelope."
+                : "Estimated from the configured idle power because no live utilization counter was available.");
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
@@ -132,5 +145,6 @@ public sealed class MonitoringService : IMonitoringService
     {
         await StopAsync().ConfigureAwait(false);
         foreach (var provider in _providers) await provider.DisposeAsync().ConfigureAwait(false);
+        await EnergyHistory.DisposeAsync().ConfigureAwait(false);
     }
 }

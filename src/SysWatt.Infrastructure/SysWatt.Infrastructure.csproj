@@ -2,7 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="..\SysWatt.Core\SysWatt.Core.csproj" />
     <PackageReference Include="LibreHardwareMonitorLib" />
-    <PackageReference Include="Hwinfo.SharedMemory.Net" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 </Project>

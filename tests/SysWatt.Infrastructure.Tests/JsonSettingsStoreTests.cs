@@ -26,7 +26,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         await File.WriteAllTextAsync(store.SettingsPath, "{nope", TestContext.Current.CancellationToken);
         var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.Equal(4, loaded.SchemaVersion);
         Assert.Single(Directory.GetFiles(_directory, "*.invalid-*"));
     }
 
@@ -45,9 +45,32 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
         var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.Equal(4, loaded.SchemaVersion);
         Assert.Equal(45, loaded.Power.PcAuxiliaryWatts);
         Assert.Equal(0, loaded.Power.ExternalAcWatts);
+    }
+
+    [Fact]
+    public async Task VersionThreeDefaultCpuFloorMigratesButCustomCalibrationIsPreserved()
+    {
+        var defaultDirectory = Path.Combine(_directory, "default");
+        var customDirectory = Path.Combine(_directory, "custom");
+        var oldJson = """
+            { "SchemaVersion": 3, "Power": { "CpuIdleWatts": OLD_VALUE } }
+            """;
+        var defaultStore = new JsonSettingsStore(NullLogger<JsonSettingsStore>.Instance, defaultDirectory);
+        var customStore = new JsonSettingsStore(NullLogger<JsonSettingsStore>.Instance, customDirectory);
+        Directory.CreateDirectory(defaultDirectory);
+        Directory.CreateDirectory(customDirectory);
+        await File.WriteAllTextAsync(defaultStore.SettingsPath, oldJson.Replace("OLD_VALUE", "8"), TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(customStore.SettingsPath, oldJson.Replace("OLD_VALUE", "27"), TestContext.Current.CancellationToken);
+
+        var migratedDefault = await defaultStore.LoadAsync(TestContext.Current.CancellationToken);
+        var migratedCustom = await customStore.LoadAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(4, migratedDefault.SchemaVersion);
+        Assert.Equal(22, migratedDefault.Power.CpuIdleWatts);
+        Assert.Equal(27, migratedCustom.Power.CpuIdleWatts);
     }
 
     public void Dispose()

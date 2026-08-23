@@ -67,42 +67,68 @@
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Text="Motherboard + RAM" FontSize="10" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" Text="{Binding BaseWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
                 <TextBlock Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="4" Text="Storage and drives" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="5" Text="{Binding StorageWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Column="4" Text="CPU idle model" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="5" Text="{Binding CpuIdleWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
                 <TextBlock Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Row="1" Text="Regular fan count" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FanCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Count CPU-cooler and case fans. Pumps belong in Other cooling."/>
-                <TextBlock Grid.Row="1" Grid.Column="2" Text="#" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="1" Grid.Column="4" Text="Rated watts per fan" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="5" Text="{Binding WattsPerFan, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Use 12 × the fan label's rated amps. Example: 12 V × 0.16 A = 1.92 W."/>
+                <TextBlock Grid.Row="1" Text="CPU peak / TDP model" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CpuPeakWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Grid.Column="4" Text="GPU idle model" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="5" Text="{Binding GpuIdleWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
                 <TextBlock Grid.Row="1" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Row="2" Text="Other cooling / pumps" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding OtherCoolingWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="2" Text="GPU peak / board model" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding GpuPeakWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
                 <TextBlock Grid.Row="2" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="2" Grid.Column="4" Text="USB-powered devices" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="2" Grid.Column="5" Text="{Binding UsbPeripheralWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="2" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="2" Grid.Column="4" Text="Storage device count" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="5" Text="{Binding StorageDeviceCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="2" Grid.Column="6" Text="#" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Row="3" Text="Displays at wall" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding DisplayWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="3" Text="Storage active ceiling" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding StorageWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Total storage draw when activity or throughput reaches the configured ceiling."/>
                 <TextBlock Grid.Row="3" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="3" Grid.Column="4" Text="External peripherals" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="3" Grid.Column="5" Text="{Binding ExternalPeripheralWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="3" Grid.Column="4" Text="Storage idle / device" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="5" Text="{Binding StorageIdleWattsPerDevice, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
                 <TextBlock Grid.Row="3" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Row="4" Text="Other wall loads" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding OtherWallWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="4" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="4" Grid.Column="4" Text="PSU efficiency" FontSize="10" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="4" Grid.Column="5" Text="{Binding EfficiencyPercent, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
-                <TextBlock Grid.Row="4" Grid.Column="6" Text="%" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="4" Text="Storage throughput ceiling" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding StorageThroughputCeilingMBps, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Approximate combined read/write rate where drives are considered fully active."/>
+                <TextBlock Grid.Row="4" Grid.Column="2" Text="MB/s" Foreground="{StaticResource MutedBrush}" FontSize="9" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="4" Grid.Column="4" Text="Regular fan count" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="4" Grid.Column="5" Text="{Binding FanCount, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="4" Grid.Column="6" Text="#" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="5" Text="Rated watts per fan" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding WattsPerFan, UpdateSourceTrigger=PropertyChanged}" Margin="5,2" ToolTip="Use 12 × the fan label's rated amps."/>
+                <TextBlock Grid.Row="5" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="5" Grid.Column="4" Text="Other cooling / pumps" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="5" Grid.Column="5" Text="{Binding OtherCoolingWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="5" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="6" Text="USB-powered devices" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding UsbPeripheralWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="6" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="6" Grid.Column="4" Text="PSU efficiency" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="6" Grid.Column="5" Text="{Binding EfficiencyPercent, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="6" Grid.Column="6" Text="%" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="7" Text="Displays at wall" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding DisplayWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="7" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="7" Grid.Column="4" Text="External peripherals" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="7" Grid.Column="5" Text="{Binding ExternalPeripheralWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="7" Grid.Column="6" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="8" Text="Other wall loads" FontSize="10" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding OtherWallWatts, UpdateSourceTrigger=PropertyChanged}" Margin="5,2"/>
+                <TextBlock Grid.Row="8" Grid.Column="2" Text="W" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
               </Grid>
             </Grid>
           </Border>
