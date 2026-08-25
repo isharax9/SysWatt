@@ -74,7 +74,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     public string StoragePower => Format(MetricKind.StoragePower, "0.0", " W");
     public string StorageTemperature => Format(MetricKind.StorageTemperature, "0", "°C");
     public IReadOnlyList<FanDisplayItem> Fans => _snapshot.Fans
-        .Where(fan => !HideZeroRpmFans || fan.Rpm >= 0.5)
+        .Where(fan => !HideZeroRpmFans || fan.Rpm > 0)
         .Select(fan => new FanDisplayItem(
             fan.SensorName, fan.HardwareName, FanCategory(fan.HardwareKind), $"{fan.Rpm:0} RPM", fan.Rpm,
             Math.Clamp(fan.Rpm / 30d, 0, 100), fan.Explanation))
@@ -84,7 +84,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         get
         {
             if (_snapshot.Fans.Count == 0) return "No RPM header exposed by this board";
-            var active = _snapshot.Fans.Count(fan => fan.Rpm >= 0.5);
+            var active = _snapshot.Fans.Count(fan => fan.Rpm > 0);
             var hidden = _snapshot.Fans.Count - active;
             return HideZeroRpmFans && hidden > 0
                 ? $"{active} active · {hidden} hidden"
