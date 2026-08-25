@@ -71,7 +71,11 @@ public sealed record PowerModelSettings(
         var storagePeak = storage?.Sum(device => device.ActiveWatts) ?? StorageWatts;
         // A fan header can feed a splitter, so auto-detection is a safe lower bound. The manual count remains an override/minimum.
         var fans = AutoDetectCooling ? Math.Max(FanCount, detectedCoolingHeaders) : FanCount;
-        var displays = AutoDetectDisplays && inventory.ActiveDisplayCount > 0 ? inventory.ActiveDisplayCount : DisplayCount;
+        // Detection can miss sleeping, docked, or temporarily disconnected displays. The user's count is
+        // therefore a minimum whenever detection is enabled, rather than being silently overwritten.
+        var displays = AutoDetectDisplays
+            ? Math.Max(DisplayCount, inventory.ActiveDisplayCount)
+            : DisplayCount;
         var detectedPeripheralWatts = AutoDetectRemovablePeripherals
             ? inventory.RemovablePeripheralCount * WattsPerDetectedPeripheral
             : 0;
