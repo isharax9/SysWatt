@@ -137,4 +137,16 @@ public sealed class PowerEstimationTests
         Assert.Equal(6, effective.FanCount);
         Assert.Equal(70, effective.DisplayWatts);
     }
+
+    [Fact]
+    public void ManualDisplayCount_IsARequiredMinimumWhenDetectionMissesADisplay()
+    {
+        var inventory = new HardwareInventorySnapshot("Test PC", "Test board", [], 0, 1, DateTimeOffset.UtcNow);
+        var configured = new PowerModelSettings(DisplayWatts: 30, AutoDetectDisplays: true, DisplayCount: 2);
+
+        var effective = configured.ApplyInventory(inventory, detectedCoolingHeaders: 0);
+
+        Assert.Equal(2, effective.DisplayCount);
+        Assert.Equal(60, effective.DisplayWatts);
+    }
 }

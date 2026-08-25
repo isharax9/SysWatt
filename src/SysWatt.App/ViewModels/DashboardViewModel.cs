@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Security.Principal;
+using SysWatt.App.Commands;
 using SysWatt.Core.Energy;
 using SysWatt.Core.History;
 using SysWatt.Core.Monitoring;
@@ -29,6 +30,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<HistoryPoint> _dailyEnergyHistory = [];
     private CancellationTokenSource? _alertDismissal;
     private CancellationTokenSource? _telemetryNoticeDismissal;
+    private bool _hideZeroRpmFans;
 
     public event EventHandler<AppSettings>? SettingsChanged;
 
@@ -41,6 +43,7 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         monitoring.SnapshotUpdated += OnSnapshotUpdated;
         monitoring.AlertTriggered += OnAlertTriggered;
         monitoring.TelemetryModeChanged += OnTelemetryModeChanged;
+        ToggleZeroRpmFansCommand = new(ToggleZeroRpmFans);
         _ = RefreshEnergyAsync();
     }
 
@@ -71,13 +74,26 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     public string StoragePower => Format(MetricKind.StoragePower, "0.0", " W");
     public string StorageTemperature => Format(MetricKind.StorageTemperature, "0", "°C");
     public IReadOnlyList<FanDisplayItem> Fans => _snapshot.Fans
+        .Where(fan => !HideZeroRpmFans || fan.Rpm > 0)
         .Select(fan => new FanDisplayItem(
             fan.SensorName, fan.HardwareName, FanCategory(fan.HardwareKind), $"{fan.Rpm:0} RPM", fan.Rpm,
             Math.Clamp(fan.Rpm / 30d, 0, 100), fan.Explanation))
         .ToArray();
-    public string FanSummary => _snapshot.Fans.Count == 0
-        ? "No RPM header exposed by this board"
-        : $"{_snapshot.Fans.Count} live channel{(_snapshot.Fans.Count == 1 ? string.Empty : "s")}";
+    public string FanSummary
+    {
+        get
+        {
+            if (_snapshot.Fans.Count == 0) return "No RPM header exposed by this board";
+            var active = _snapshot.Fans.Count(fan => fan.Rpm > 0);
+            var hidden = _snapshot.Fans.Count - active;
+            return HideZeroRpmFans && hidden > 0
+                ? $"{active} active · {hidden} hidden"
+                : $"{_snapshot.Fans.Count} channel{(_snapshot.Fans.Count == 1 ? string.Empty : "s")}";
+        }
+    }
+    public bool HideZeroRpmFans => _hideZeroRpmFans;
+    public string ZeroRpmFanAction => HideZeroRpmFans ? "Show all fans" : "Hide 0 RPM";
+    public RelayCommand ToggleZeroRpmFansCommand { get; }
     public bool IsAdministrator => new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
     public string SensorAccessNotice
     {
@@ -198,6 +214,15 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         await SaveSettingsAsync();
         OnPropertyChanged(nameof(Theme));
         OnPropertyChanged(nameof(ThemeAction));
+    }
+
+    private void ToggleZeroRpmFans()
+    {
+        _hideZeroRpmFans = !_hideZeroRpmFans;
+        OnPropertyChanged(nameof(HideZeroRpmFans));
+        OnPropertyChanged(nameof(ZeroRpmFanAction));
+        OnPropertyChanged(nameof(Fans));
+        OnPropertyChanged(nameof(FanSummary));
     }
 
     public async Task ExportEnergyAsync(string path) => await _monitoring.EnergyHistory.ExportAsync(path);

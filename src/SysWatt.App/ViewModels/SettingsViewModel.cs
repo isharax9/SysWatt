@@ -112,7 +112,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public double OtherCoolingWatts { get => _otherCoolingWatts; set { if (Set(ref _otherCoolingWatts, value)) OnPropertyChanged(nameof(CoolingRatedPower)); } }
     public string CoolingRatedPower => $"{Math.Max(0, FanCount * WattsPerFan + OtherCoolingWatts):0.0} W rated maximum";
     public double UsbPeripheralWatts { get => _usbPeripheralWatts; set => Set(ref _usbPeripheralWatts, value); }
-    public double DisplayWatts { get => _displayWatts; set => Set(ref _displayWatts, value); }
+    public double DisplayWatts { get => _displayWatts; set { if (Set(ref _displayWatts, value)) OnPropertyChanged(nameof(DisplayPowerPreview)); } }
     public double ExternalPeripheralWatts { get => _externalPeripheralWatts; set => Set(ref _externalPeripheralWatts, value); }
     public double OtherWallWatts { get => _otherWallWatts; set => Set(ref _otherWallWatts, value); }
     public double EfficiencyPercent { get => _efficiencyPercent; set => Set(ref _efficiencyPercent, value); }
@@ -126,7 +126,8 @@ public sealed class SettingsViewModel : ViewModelBase
     public bool AutoDetectStorage { get => _autoDetectStorage; set => Set(ref _autoDetectStorage, value); }
     public bool AutoDetectCooling { get => _autoDetectCooling; set => Set(ref _autoDetectCooling, value); }
     public bool AutoDetectDisplays { get => _autoDetectDisplays; set => Set(ref _autoDetectDisplays, value); }
-    public int DisplayCount { get => _displayCount; set => Set(ref _displayCount, value); }
+    public int DisplayCount { get => _displayCount; set { if (Set(ref _displayCount, value)) OnPropertyChanged(nameof(DisplayPowerPreview)); } }
+    public string DisplayPowerPreview => $"{Math.Max(0, DisplayCount * DisplayWatts):0.#} W for {DisplayCount} display(s)";
     public bool AutoDetectRemovablePeripherals { get => _autoDetectRemovablePeripherals; set => Set(ref _autoDetectRemovablePeripherals, value); }
     public double WattsPerDetectedPeripheral { get => _wattsPerDetectedPeripheral; set => Set(ref _wattsPerDetectedPeripheral, value); }
     public string AccentColor { get => _accentColor; set => Set(ref _accentColor, value); }
