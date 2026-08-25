@@ -63,11 +63,23 @@
             </Grid>
           </StackPanel></Border>
 
-          <Border Style="{StaticResource SettingsCard}" Margin="0,16,0,20"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1"/><ColumnDefinition Width="1"/></Grid.ColumnDefinitions>
-            <StackPanel Margin="0,0,22,0"><TextBlock Text="MEASUREMENT POLICY" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Exact CPU/GPU sensors are never overwritten. Missing component power uses the adjustable utilization envelope; storage, cooling, board, display, and peripheral values are labeled CALCULATED." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel>
-            <StackPanel Grid.Column="1" Margin="0,0,22,0"><TextBlock Text="ENERGY DATABASE" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Daily units (1 unit = 1 kWh) integrate the hybrid wall-power result in SQLite. Archives can be imported and exported from Energy history." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel>
-            <StackPanel Grid.Column="2"><TextBlock Text="FULL HARDWARE ACCESS" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock Text="When Ryzen or motherboard sensors are permission-restricted, use the dashboard action to restart with administrator access." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel>
-          </Grid></Border>
+          <Border Style="{StaticResource SettingsCard}" Margin="0,16,0,20">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1"/><ColumnDefinition Width="1"/></Grid.ColumnDefinitions>
+              <Grid Grid.Column="0" Margin="0,0,22,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="MEASUREMENT POLICY" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Text="Exact CPU/GPU sensors are never overwritten. Missing component power uses the adjustable utilization envelope; storage, cooling, board, display, and peripheral values are labeled CALCULATED." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              </Grid>
+              <Grid Grid.Column="1" Margin="0,0,22,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="ENERGY DATABASE" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Text="Daily units (1 unit = 1 kWh) integrate the hybrid wall-power result in SQLite. Archives can be imported and exported from Energy history." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              </Grid>
+              <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="FULL HARDWARE ACCESS" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Text="When Ryzen or motherboard sensors are permission-restricted, use the dashboard action to restart with administrator access." Foreground="{DynamicResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              </Grid>
+            </Grid>
+          </Border>
 
           <Grid Margin="2,0,2,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="CUSTOM ALERTS" Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold"/><TextBlock Text="Rules evaluate live measured metrics. Missing or stale readings never trigger." Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="Add rule" Command="{Binding AddAlertCommand}" Margin="0,0,8,0"/><Button Content="Duplicate" Command="{Binding DuplicateAlertCommand}" Margin="0,0,8,0"/><Button Content="Delete" Command="{Binding DeleteAlertCommand}"/></StackPanel></Grid>
           <DataGrid ItemsSource="{Binding Alerts}" SelectedItem="{Binding SelectedAlert}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" AlternationCount="2" MinHeight="260">
