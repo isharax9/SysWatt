@@ -1,26 +1,67 @@
 <Window x:Class="SysWatt.App.Views.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="About SysWatt" Width="620" Height="560" MinWidth="560" MinHeight="500"
-        WindowStyle="None" ResizeMode="CanResize" WindowStartupLocation="CenterOwner"
+        Title="About SysWatt" Width="520" Height="430"
+        WindowStyle="SingleBorderWindow" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource WindowBackground}" ShowInTaskbar="False"
         Icon="/SysWatt.App;component/Assets/SysWatt.ico">
-  <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0"/></shell:WindowChrome.WindowChrome>
-  <Border BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" Background="{DynamicResource WindowBackground}">
-    <Grid><Grid.RowDefinitions><RowDefinition Height="68"/><RowDefinition/><RowDefinition Height="64"/></Grid.RowDefinitions>
-      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="Header_MouseLeftButtonDown"><Grid Margin="20,0,8,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image Source="/SysWatt.App;component/Assets/SysWatt-logo.png" Width="42" Height="42" Margin="0,0,12,0"/><StackPanel VerticalAlignment="Center"><TextBlock Text="About SysWatt" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Power intelligence with measurement provenance" Foreground="{DynamicResource MutedBrush}" FontSize="10"/></StackPanel></StackPanel><Button Grid.Column="1" Content="×" Style="{StaticResource WindowControlButton}" Click="Close_Click"/></Grid></Border>
-      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel Margin="28,24">
-        <TextBlock Text="SYSWATT" Foreground="{DynamicResource AccentBrush}" FontSize="30" FontWeight="Bold"/>
-        <StackPanel Orientation="Horizontal" Margin="0,4,0,18"><TextBlock Text="Version " FontSize="12" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Version}" FontSize="12" Foreground="{DynamicResource MutedBrush}"/></StackPanel>
-        <TextBlock Text="SysWatt is a Windows hardware power and energy monitor designed to keep measured telemetry, unavailable readings, and historical consumption clearly separated." TextWrapping="Wrap" FontSize="13" LineHeight="20"/>
-        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="9" Padding="18" Margin="0,22,0,16"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><TextBlock Text="CREATED BY" Foreground="{DynamicResource MutedBrush}" FontSize="9"/><TextBlock Grid.Column="1" Text="Ishara · @isharax9" FontWeight="SemiBold"/><TextBlock Grid.Row="1" Text="PROJECT" Foreground="{DynamicResource MutedBrush}" FontSize="9" Margin="0,14,0,0"/><Button Grid.Row="1" Grid.Column="1" Content="github.com/isharax9/PerfMetrics" Click="Project_Click" HorizontalAlignment="Left" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource AccentBrush}" Margin="0,7,0,0"/><TextBlock Grid.Row="2" Text="LICENSE" Foreground="{DynamicResource MutedBrush}" FontSize="9" Margin="0,14,0,0"/><TextBlock Grid.Row="2" Grid.Column="1" Text="MIT · third-party notices included" Margin="0,14,0,0"/></Grid></Border>
-        <TextBlock Text="DATA &amp; PRIVACY" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold"/>
-        <TextBlock Text="Energy history and settings are stored locally. SysWatt does not send telemetry to a cloud service. Hardware accuracy depends on sensors exposed by the device, firmware, permissions, and active provider." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" LineHeight="18" Margin="0,7,0,0"/>
-        <TextBlock Text="ACKNOWLEDGEMENTS" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold" Margin="0,18,0,0"/>
-        <TextBlock Text="Built with .NET, WPF, SQLite, LibreHardwareMonitor, Windows performance counters, and optional HWiNFO shared-memory telemetry." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" LineHeight="18" Margin="0,7,0,0"/>
-      </StackPanel></ScrollViewer>
-      <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><Grid Margin="24,0"><TextBlock Text="© 2026 SysWatt contributors" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/><Button Content="Close" Click="Close_Click" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
+  <Grid Margin="16,14,16,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Header with icon -->
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+      <Image Source="/SysWatt.App;component/Assets/SysWatt-logo.png" Width="48" Height="48" Margin="0,0,14,0" />
+      <StackPanel VerticalAlignment="Center">
+        <TextBlock Text="SysWatt" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+        <TextBlock Text="{Binding Version, StringFormat=Version {0}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Details -->
+    <StackPanel Grid.Row="1">
+      <TextBlock Text="SysWatt is a lightweight Windows hardware power and energy monitor designed to keep measured telemetry, unavailable readings, and historical consumption clearly separated."
+                 TextWrapping="Wrap" FontSize="12" LineHeight="18" Margin="0,0,0,12" />
+
+      <GroupBox Header="Project Information">
+        <Grid Margin="0,4,0,4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="6" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="6" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <TextBlock Text="Developer:" FontWeight="SemiBold" />
+          <TextBlock Grid.Column="1" Text="Ishara (@isharax9)" />
+
+          <TextBlock Grid.Row="2" Text="Repository:" FontWeight="SemiBold" />
+          <Button Grid.Row="2" Grid.Column="1" Content="github.com/isharax9/PerfMetrics" Click="Project_Click"
+                  HorizontalAlignment="Left" Padding="0" Background="Transparent" BorderThickness="0"
+                  Foreground="{DynamicResource AccentBrush}" Cursor="Hand" />
+
+          <TextBlock Grid.Row="4" Text="License:" FontWeight="SemiBold" />
+          <TextBlock Grid.Row="4" Grid.Column="1" Text="MIT License" />
+        </Grid>
+      </GroupBox>
+
+      <TextBlock Text="Data Privacy &amp; Local Storage" FontWeight="SemiBold" FontSize="11" Margin="0,8,0,2" />
+      <TextBlock Text="Energy history and settings are stored locally in SQLite. SysWatt does not collect or transmit personal telemetry."
+                 FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- Bottom button -->
+    <Grid Grid.Row="2" Margin="0,12,0,0">
+      <Button Content="OK" Click="Close_Click" Style="{StaticResource PrimaryButton}"
+              Width="80" HorizontalAlignment="Right" />
     </Grid>
-  </Border>
+  </Grid>
 </Window>

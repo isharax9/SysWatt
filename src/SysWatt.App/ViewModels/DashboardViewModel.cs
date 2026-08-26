@@ -260,10 +260,26 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
         };
     }
 
+    private bool _isActive = true;
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (Set(ref _isActive, value) && value)
+            {
+                NotifyAllProperties();
+                _ = RefreshEnergyAsync();
+            }
+        }
+    }
+
+    private void NotifyAllProperties() => OnPropertyChanged(string.Empty);
+
     private IReadOnlyList<HistoryPoint> Window(MetricKind metric)
     {
         var cutoff = DateTimeOffset.UtcNow.AddMinutes(-_settings.GraphWindowMinutes);
-        return _monitoring.History.Get(metric).Where(point => point.Timestamp >= cutoff).ToArray();
+        return _monitoring.History.GetWindow(metric, cutoff);
     }
 
     private string Status(MetricKind kind)
@@ -285,11 +301,13 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
 
     private void OnSnapshotUpdated(object? sender, MetricSnapshot snapshot)
     {
+        _snapshot = snapshot;
+        if (!_isActive) return;
+
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            _snapshot = snapshot;
-            foreach (var property in typeof(DashboardViewModel).GetProperties().Where(p => p.Name != nameof(ActiveAlert)))
-                OnPropertyChanged(property.Name);
+            if (!_isActive) return;
+            NotifyAllProperties();
             if (DateTimeOffset.UtcNow - _lastEnergyRefresh > TimeSpan.FromSeconds(15)) _ = RefreshEnergyAsync();
         });
     }

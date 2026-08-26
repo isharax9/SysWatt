@@ -2,6 +2,7 @@ using System.IO;
 using System.Diagnostics;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,7 @@ public partial class App : System.Windows.Application
     private TrayDashboardWindow? _trayDashboard;
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
+    private EnergyHistoryWindow? _energyHistoryWindow;
     private AppSettings _settings = new();
     private bool _exiting;
 
@@ -44,6 +46,7 @@ public partial class App : System.Windows.Application
         var isSettingsPreview = e.Args.Any(a => a.Equals("--preview-settings", StringComparison.OrdinalIgnoreCase));
         var isDashboardPreview = e.Args.Any(a => a.Equals("--preview-dashboard", StringComparison.OrdinalIgnoreCase));
         var isTrayPreview = e.Args.Any(a => a.Equals("--preview-tray", StringComparison.OrdinalIgnoreCase));
+        var isEnergyPreview = e.Args.Any(a => a.Equals("--preview-energy", StringComparison.OrdinalIgnoreCase));
         var isLightPreview = e.Args.Any(a => a.Equals("--preview-light", StringComparison.OrdinalIgnoreCase));
         var isSmokeTest = e.Args.Any(a => a.Equals("--smoke-test", StringComparison.OrdinalIgnoreCase));
         var sensorDiagnosticArgument = Array.FindIndex(e.Args, a => a.Equals("--diagnose-sensors", StringComparison.OrdinalIgnoreCase));
@@ -120,11 +123,13 @@ public partial class App : System.Windows.Application
             _trayDashboard = new TrayDashboardWindow { DataContext = dashboardViewModel };
             _dashboard.SettingsRequested += (_, _) => OpenSettings();
             _dashboard.AboutRequested += (_, _) => OpenAbout();
+            _dashboard.EnergyHistoryRequested += (_, _) => OpenEnergyHistory();
             _dashboard.RestartElevatedRequested += async (_, _) => await RestartElevatedAsync();
             _trayDashboard.OpenFullDashboardRequested += (_, _) => _dashboard.ShowDashboard();
             _tray = new TrayIconService(monitoring, _settings);
             _tray.QuickDashboardRequested += (_, _) => _trayDashboard.ToggleNearTray();
             _tray.MainDashboardRequested += (_, _) => _dashboard.ShowDashboard();
+            _tray.EnergyHistoryRequested += (_, _) => OpenEnergyHistory();
             _tray.SettingsRequested += (_, _) => OpenSettings();
             _tray.ExitRequested += async (_, _) => await ExitAsync();
             _tray.StartupChanged += async (_, enabled) => await SetStartupAsync(enabled);
@@ -141,7 +146,53 @@ public partial class App : System.Windows.Application
                 smokeSettingsWindow.Close();
                 var smokeAboutWindow = new AboutWindow();
                 smokeAboutWindow.Close();
+                var smokeEnergyViewModel = new EnergyHistoryViewModel(_host.Services.GetRequiredService<IEnergyHistoryStore>());
+                var smokeEnergyWindow = new EnergyHistoryWindow(smokeEnergyViewModel);
+                smokeEnergyWindow.Close();
                 await Task.Delay(2500);
+                await ExitAsync();
+                return;
+            }
+
+            var renderScreenshotsIdx = Array.FindIndex(e.Args, a => a.Equals("--render-screenshots", StringComparison.OrdinalIgnoreCase));
+            if (renderScreenshotsIdx >= 0 && renderScreenshotsIdx + 1 < e.Args.Length)
+            {
+                var outDir = e.Args[renderScreenshotsIdx + 1];
+                Directory.CreateDirectory(outDir);
+
+                var settingsVm = new SettingsViewModel(_settings,
+                    _host.Services.GetRequiredService<ISettingsStore>(),
+                    _host.Services.GetRequiredService<IStartupRegistrationService>(),
+                    monitoring);
+                var settingsWin = new SettingsWindow(settingsVm);
+                settingsWin.Show();
+                RenderWindowToPng(settingsWin, 680, 560, Path.Combine(outDir, "settings_preview.png"));
+                settingsWin.Close();
+
+                var energyStore = _host.Services.GetRequiredService<IEnergyHistoryStore>();
+                var energyVm = new EnergyHistoryViewModel(energyStore);
+                await energyVm.RefreshAsync();
+                var energyWin = new EnergyHistoryWindow(energyVm);
+                energyWin.Show();
+                RenderWindowToPng(energyWin, 660, 520, Path.Combine(outDir, "energy_list_preview.png"));
+
+                if (energyWin.Content is Grid rootGrid && rootGrid.Children.Count > 0 && rootGrid.Children[0] is System.Windows.Controls.TabControl tabs)
+                {
+                    tabs.SelectedIndex = 1;
+                    energyWin.UpdateLayout();
+                    RenderWindowToPng(energyWin, 660, 520, Path.Combine(outDir, "energy_calendar_preview.png"));
+                }
+                energyWin.Close();
+
+                _dashboard.Show();
+                RenderWindowToPng(_dashboard, 1080, 780, Path.Combine(outDir, "dashboard_preview.png"));
+                _dashboard.Hide();
+
+                var aboutWin = new AboutWindow();
+                aboutWin.Show();
+                RenderWindowToPng(aboutWin, 520, 430, Path.Combine(outDir, "about_preview.png"));
+                aboutWin.Close();
+
                 await ExitAsync();
                 return;
             }
@@ -149,6 +200,14 @@ public partial class App : System.Windows.Application
             if (e.Args.Any(a => a.Equals("--preview-settings", StringComparison.OrdinalIgnoreCase)))
             {
                 OpenSettings();
+                await Task.Delay(15000);
+                await ExitAsync();
+                return;
+            }
+
+            if (isEnergyPreview)
+            {
+                OpenEnergyHistory();
                 await Task.Delay(15000);
                 await ExitAsync();
                 return;
@@ -215,6 +274,69 @@ public partial class App : System.Windows.Application
         _aboutWindow = new AboutWindow { Owner = _dashboard };
         _aboutWindow.Closed += (_, _) => _aboutWindow = null;
         _aboutWindow.Show();
+    }
+
+    private void OpenEnergyHistory()
+    {
+        if (_host is null || _dashboard is null) return;
+        if (_energyHistoryWindow is { IsVisible: true }) { _energyHistoryWindow.Activate(); return; }
+        var viewModel = new EnergyHistoryViewModel(_host.Services.GetRequiredService<IEnergyHistoryStore>());
+        _energyHistoryWindow = new EnergyHistoryWindow(viewModel);
+        if (_dashboard.IsVisible) _energyHistoryWindow.Owner = _dashboard;
+        else _energyHistoryWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        _energyHistoryWindow.ImportRequested += async (_, _) => await ImportEnergyFromHistoryWindowAsync(viewModel);
+        _energyHistoryWindow.ExportRequested += async (_, _) => await ExportEnergyFromHistoryWindowAsync(viewModel);
+        _energyHistoryWindow.Closed += (_, _) => _energyHistoryWindow = null;
+        _energyHistoryWindow.Show();
+    }
+
+    private async Task ExportEnergyFromHistoryWindowAsync(EnergyHistoryViewModel vm)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export measured SysWatt energy history",
+            Filter = "SysWatt energy archive (*.syswatt-energy.json)|*.syswatt-energy.json|JSON files (*.json)|*.json",
+            FileName = $"syswatt-energy-{DateTime.Now:yyyyMMdd}.syswatt-energy.json"
+        };
+        if (dialog.ShowDialog(_energyHistoryWindow) != true) return;
+        try
+        {
+            var store = _host?.Services.GetRequiredService<IEnergyHistoryStore>();
+            if (store is not null)
+            {
+                await store.ExportAsync(dialog.FileName);
+                System.Windows.MessageBox.Show(_energyHistoryWindow, "Energy history was exported successfully.", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(_energyHistoryWindow, $"Energy history could not be exported.\n\n{ex.Message}", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task ImportEnergyFromHistoryWindowAsync(EnergyHistoryViewModel vm)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import SysWatt energy history",
+            Filter = "SysWatt energy archive (*.syswatt-energy.json;*.json)|*.syswatt-energy.json;*.json"
+        };
+        if (dialog.ShowDialog(_energyHistoryWindow) != true) return;
+        if (System.Windows.MessageBox.Show(_energyHistoryWindow, "Matching calendar dates will be replaced by the imported measured totals. Continue?", "Import energy history", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        try
+        {
+            var store = _host?.Services.GetRequiredService<IEnergyHistoryStore>();
+            if (store is not null)
+            {
+                var count = await store.ImportAsync(dialog.FileName);
+                await vm.RefreshAsync();
+                System.Windows.MessageBox.Show(_energyHistoryWindow, $"Imported {count} daily energy record{(count == 1 ? string.Empty : "s")}.", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(_energyHistoryWindow, $"Energy history could not be imported.\n\n{ex.Message}", "SysWatt", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private async Task RestartElevatedAsync()
@@ -322,6 +444,32 @@ public partial class App : System.Windows.Application
             _singleInstance = null;
             Shutdown();
             Environment.Exit(0);
+        }
+    }
+
+    private static void RenderWindowToPng(Window window, int width, int height, string filePath)
+    {
+        window.UpdateLayout();
+        if (window.Content is FrameworkElement element)
+        {
+            var w = (int)Math.Max(10, element.ActualWidth > 0 ? element.ActualWidth : width - 16);
+            var h = (int)Math.Max(10, element.ActualHeight > 0 ? element.ActualHeight : height - 42);
+
+            var dv = new System.Windows.Media.DrawingVisual();
+            using (var dc = dv.RenderOpen())
+            {
+                var bg = window.Background ?? (System.Windows.Media.Brush)window.TryFindResource("WindowBackground") ?? System.Windows.Media.Brushes.Black;
+                dc.DrawRectangle(bg, null, new Rect(0, 0, w, h));
+            }
+
+            var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            rtb.Render(dv);
+            rtb.Render(element);
+
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+            using var stream = File.Create(filePath);
+            encoder.Save(stream);
         }
     }
 }

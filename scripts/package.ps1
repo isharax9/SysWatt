@@ -1,13 +1,17 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')]
+    [ValidatePattern('^v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')]
     [string] $Version
 )
 
 $ErrorActionPreference = 'Stop'
+$cleanVersion = $Version.TrimStart('v', 'V')
+$versionTag = "v$cleanVersion"
+
 $repository = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $artifacts = Join-Path $repository 'artifacts'
-$publish = Join-Path $artifacts 'publish'
+$publishRoot = Join-Path $artifacts 'publish'
+$publish = Join-Path $publishRoot $versionTag
 
 if (-not $publish.StartsWith($repository, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Publish directory escaped the repository.'
@@ -18,7 +22,7 @@ New-Item -ItemType Directory -Path $publish -Force | Out-Null
 
 dotnet publish (Join-Path $repository 'src\SysWatt.App\SysWatt.App.csproj') `
     --configuration Release --runtime win-x64 --self-contained true --no-restore `
-    -p:Version=$Version -p:PublishSingleFile=true -p:PublishTrimmed=false `
+    -p:Version=$cleanVersion -p:PublishSingleFile=true -p:PublishTrimmed=false `
     --output $publish
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
 
@@ -26,7 +30,7 @@ New-Item -ItemType File -Path (Join-Path $publish 'portable.flag') -Force | Out-
 Copy-Item -LiteralPath (Join-Path $repository 'LICENSE') -Destination $publish
 Copy-Item -LiteralPath (Join-Path $repository 'THIRD-PARTY-NOTICES.md') -Destination $publish
 
-$zip = Join-Path $artifacts "SysWatt-$Version-win-x64-portable.zip"
+$zip = Join-Path $artifacts "SysWatt-$cleanVersion-win-x64-portable.zip"
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zip -CompressionLevel Optimal
 
@@ -40,7 +44,7 @@ if (-not $compiler) {
     $compiler = $knownLocations | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
 }
 if ($compiler) {
-    & $compiler "/DMyAppVersion=$Version" "/DPublishDir=$publish" (Join-Path $repository 'installer\SysWatt.iss')
+    & $compiler "/DMyAppVersion=$cleanVersion" "/DPublishDir=$publish" (Join-Path $repository 'installer\SysWatt.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
 } else {
     Write-Warning 'ISCC.exe was not found; portable package created, installer skipped.'
@@ -53,4 +57,5 @@ $lines = foreach ($file in $releaseFiles) {
     "$hash *$($file.Name)"
 }
 Set-Content -LiteralPath $checksumFile -Value $lines -Encoding utf8NoBOM
+Write-Host "Published to $publish"
 Write-Host "Release artifacts written to $artifacts"

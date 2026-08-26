@@ -36,29 +36,38 @@ public sealed partial class SensorNormalizer : ISensorNormalizer
 
     public MetricSnapshot Normalize(IReadOnlyList<RawSensorReading> readings, DateTimeOffset now)
     {
-        var metrics = new Dictionary<MetricKind, MetricReading>();
+        var metrics = new Dictionary<MetricKind, MetricReading>(Policies.Length);
         foreach (var policy in Policies)
         {
-            var winner = readings
-                .Where(r => IsCandidate(r, policy, now))
-                .Select(r => (Reading: r, Score: Score(r, policy)))
-                .OrderByDescending(x => x.Score)
-                .ThenBy(x => x.Reading.Descriptor.SensorId, StringComparer.Ordinal)
-                .FirstOrDefault();
+            RawSensorReading? bestReading = null;
+            var bestScore = int.MinValue;
 
-            metrics[policy.Metric] = winner.Reading is null
+            for (var i = 0; i < readings.Count; i++)
+            {
+                var r = readings[i];
+                if (!IsCandidate(r, policy, now)) continue;
+                var score = Score(r, policy);
+                if (bestReading is null || score > bestScore ||
+                    (score == bestScore && string.Compare(r.Descriptor.SensorId, bestReading.Descriptor.SensorId, StringComparison.Ordinal) < 0))
+                {
+                    bestReading = r;
+                    bestScore = score;
+                }
+            }
+
+            metrics[policy.Metric] = bestReading is null
                 ? MetricReading.Unavailable(policy.Metric, MetricUnits.For(policy.Metric), now, ExplainUnavailable(readings, policy, now))
                 : new MetricReading(
                     policy.Metric,
-                    winner.Reading.Value,
+                    bestReading.Value,
                     MetricUnits.For(policy.Metric),
-                    winner.Reading.Timestamp,
+                    bestReading.Timestamp,
                     false,
-                    winner.Reading.Descriptor.SensorId,
-                    $"{winner.Reading.Descriptor.HardwareName} / {winner.Reading.Descriptor.SensorName}",
-                    $"Selected from {winner.Reading.Descriptor.Provider} with ranking score {winner.Score}.")
+                    bestReading.Descriptor.SensorId,
+                    $"{bestReading.Descriptor.HardwareName} / {bestReading.Descriptor.SensorName}",
+                    $"Selected from {bestReading.Descriptor.Provider} with ranking score {bestScore}.")
                 {
-                    SourceProvider = winner.Reading.Descriptor.Provider
+                    SourceProvider = bestReading.Descriptor.Provider
                 };
         }
 

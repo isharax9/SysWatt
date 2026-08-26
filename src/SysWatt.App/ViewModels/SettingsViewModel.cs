@@ -136,7 +136,8 @@ public sealed class SettingsViewModel : ViewModelBase
     public RelayCommand AddAlertCommand { get; }
     public RelayCommand DuplicateAlertCommand { get; }
     public RelayCommand DeleteAlertCommand { get; }
-    public AsyncRelayCommand SaveCommand { get; }
+    public RelayCommand SaveCommand { get; }
+    public RelayCommand ApplyCommand { get; }
     public RelayCommand CancelCommand { get; }
 
     public SettingsViewModel(AppSettings settings, ISettingsStore store, IStartupRegistrationService startup, IMonitoringService monitoring)
@@ -171,11 +172,12 @@ public sealed class SettingsViewModel : ViewModelBase
             Alerts.Add(copy); SelectedAlert = copy;
         });
         DeleteAlertCommand = new(() => { if (SelectedAlert is not null) Alerts.Remove(SelectedAlert); });
-        SaveCommand = new(SaveAsync);
+        SaveCommand = new(async () => { if (await SaveInternalAsync()) RequestClose?.Invoke(this, EventArgs.Empty); });
+        ApplyCommand = new(async () => await SaveInternalAsync());
         CancelCommand = new(() => RequestClose?.Invoke(this, EventArgs.Empty));
     }
 
-    private async Task SaveAsync()
+    private async Task<bool> SaveInternalAsync()
     {
         Error = null;
         var power = new PowerModelSettings(
@@ -205,7 +207,7 @@ public sealed class SettingsViewModel : ViewModelBase
         var validation = power.Validate().ToList();
         if (Alerts.Any(a => string.IsNullOrWhiteSpace(a.Name))) validation.Add("Every alert needs a name.");
         if (Alerts.Any(a => a.DurationSeconds < 0 || a.CooldownSeconds < 0)) validation.Add("Alert duration and cooldown cannot be negative.");
-        if (validation.Count > 0) { Error = string.Join(" ", validation); return; }
+        if (validation.Count > 0) { Error = string.Join(" ", validation); return false; }
         try
         {
             var settings = new AppSettings
@@ -221,9 +223,13 @@ public sealed class SettingsViewModel : ViewModelBase
             await _store.SaveAsync(settings);
             _monitoring.ApplySettings(settings);
             Saved?.Invoke(this, settings);
-            RequestClose?.Invoke(this, EventArgs.Empty);
+            return true;
         }
-        catch (Exception ex) { Error = $"Settings could not be saved: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            Error = $"Settings could not be saved: {ex.Message}";
+            return false;
+        }
     }
 
     private void UpdateTotalFanCount()
