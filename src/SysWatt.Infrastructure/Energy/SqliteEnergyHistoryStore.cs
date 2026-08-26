@@ -85,7 +85,7 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
             await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
             await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT local_date, watt_hours, average_watts, peak_watts FROM daily_energy WHERE local_date >= $from AND local_date <= $through ORDER BY local_date";
+            command.CommandText = "SELECT local_date, watt_hours, average_watts, peak_watts, duration_hours FROM daily_energy WHERE local_date >= $from AND local_date <= $through ORDER BY local_date";
             command.Parameters.AddWithValue("$from", DateKey(from));
             command.Parameters.AddWithValue("$through", DateKey(through));
             var found = new Dictionary<DateOnly, DailyEnergySummary>();
@@ -93,7 +93,8 @@ public sealed class SqliteEnergyHistoryStore : IEnergyHistoryStore
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var date = DateOnly.ParseExact(reader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                found[date] = new(date, reader.GetDouble(1) / 1000d, reader.GetDouble(2), reader.GetDouble(3)) { HasData = true };
+                var durationHours = reader.FieldCount > 4 && !reader.IsDBNull(4) ? reader.GetDouble(4) : 0;
+                found[date] = new(date, reader.GetDouble(1) / 1000d, reader.GetDouble(2), reader.GetDouble(3), durationHours) { HasData = true };
             }
             var sourceByDate = new Dictionary<DateOnly, Dictionary<TelemetrySource, double>>();
             await using (var sourceCommand = connection.CreateCommand())

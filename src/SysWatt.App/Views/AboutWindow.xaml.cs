@@ -18,9 +18,28 @@ public partial class AboutWindow : Window
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void Project_Click(object sender, RoutedEventArgs e) => Process.Start(new ProcessStartInfo
+    private void Project_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/isharax9/PerfMetrics");
+
+    private void ReportBug_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/isharax9/PerfMetrics/issues/new?title=%5BBug%5D+&labels=bug");
+
+    private void Url_Click(object sender, RoutedEventArgs e)
     {
-        FileName = "https://github.com/isharax9/PerfMetrics",
-        UseShellExecute = true
-    });
+        if (sender is FrameworkElement { Tag: string url } && !string.IsNullOrWhiteSpace(url))
+        {
+            OpenUrl(url);
+        }
+    }
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
 }

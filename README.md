@@ -1,76 +1,172 @@
 # SysWatt
 
-SysWatt is a standalone Windows hardware power and energy monitor. It combines embedded LibreHardwareMonitor access, Windows-native activity counters, Windows hardware inventory, and an optional HWiNFO shared-memory bridge. Its live graph window is configurable from 1 to 240 minutes, and daily energy history is stored locally in SQLite.
+<div align="center">
 
-> **Status:** `1.0.0` first public release. Real-hardware behavior continues to be validated across additional systems. The Ryzen 5 3600 / RTX 3060 target is an initial manual-test target, not a universal compatibility claim.
+![SysWatt Logo](src/SysWatt.App/Assets/SysWatt-logo.png)
 
-![SysWatt redesigned settings](docs/screenshots/settings.png)
+### Professional, Lightweight Windows Hardware Power & Energy Monitor
 
-## Features
+[![GitHub Badge](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=fff&style=for-the-badge)](https://github.com/isharax9)
+[![LinkedIN](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/isharax9/)
+[![Twitter-batch](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/isharax9)
+[![Gmail Badge](https://img.shields.io/badge/Gmail-EA4335?logo=gmail&logoColor=fff&style=for-the-badge)](mailto:isharax9@gmail.com)
+[![Buy_Me_A_Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/macstudyroom)
+[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/mac_knight141/)
 
-- Full resizable application dashboard plus a compact pinnable tray dashboard and live numeric tray icon.
-- Exact CPU/GPU power sensors when exposed, plus an explicitly labeled hybrid DC/wall model for the rest of the system.
-- Professional axis/grid charts with synchronized utilization/power axes and a configurable 1–240-minute rolling window.
-- SQLite-backed daily kWh history with 7-day/month summaries, calendar lookup, and validated archive import/export.
-- Working dashboard navigation, dark/light themes, administrator recovery guidance, and an About view.
-- Per-section dashboard customization persisted across launches.
-- Dynamic, ranked sensor mapping—no hardcoded machine sensor names or indexes.
-- Automatic NVMe/SSD/HDD classification, active/idle storage curves, active-display and removable camera/portable-device discovery, and fan-header-aware cooling inventory with manual overrides.
-- User-defined alerts with metric, operator, threshold, duration, cooldown, severity, toast, and in-app behavior.
-- User-scoped, reversible start-with-Windows registration.
-- Versioned atomic JSON settings and portable mode.
-- JSON diagnostics export with raw sensor metadata and selected normalized mappings.
-- No telemetry, accounts, cloud calls, or hardware-data upload.
+</div>
 
-## Measurement policy
+---
 
-SysWatt prefers exact hardware-reported CPU/GPU watts and never overwrites them. If an exact component sensor is absent, the hybrid total uses a labeled, adjustable utilization envelope. Storage draw uses detected drive classes plus live activity/throughput; motherboard/RAM, CPU and case cooling, displays, USB devices, and external peripherals use visible settings. These values are labeled **calculated**, not presented as hardware measurements. Wall draw is `PC DC / PSU efficiency + displays + external wall loads`, and that result is integrated into daily kWh.
+## Overview
 
-## Requirements and installation
+**SysWatt** is a standalone, ultra-low-overhead Windows desktop application for monitoring hardware power consumption, PC run-time, and electrical energy accumulation. Built with native WPF and styled to reflect classic, utilitarian Windows utilities (such as **TrafficMonitor**, **HWiNFO**, and standard Windows Property Sheets), SysWatt delivers rich insights without high CPU or RAM loads.
 
-- Windows 10 version 1809 or newer, or Windows 11, x64.
-- Normal user access for Windows counters and GPU APIs. Ryzen package temperature/power and motherboard sensors require a compatible low-level driver such as PawnIO; unlike HWiNFO or MSI Center, SysWatt does not silently reuse another application's driver.
+SysWatt combines embedded sensor access (LibreHardwareMonitor), native Windows activity counters, automated storage and display inventory, and an optional HWiNFO shared-memory bridge.
 
-For an installed build, run `SysWatt-Setup-<version>.exe`. The installer is per-user and does not force Windows startup. For the portable ZIP, extract it to a writable folder and run `SysWatt.App.exe`; `portable.flag` keeps settings in the adjacent `data` directory. Remove that flag to use `%LOCALAPPDATA%\SysWatt\settings.json`.
+![SysWatt Main Dashboard](docs/screenshots/dashboard.png)
 
-## Usage
+---
 
-- Left-click the tray icon to toggle the quick dashboard; use its pin button to keep it visible.
-- Right-click it for the quick dashboard, full dashboard, Settings, startup, and Exit.
-- Use Settings to select the theme, tray metric, graph duration, alert banner duration, automatic inventory policy, and every manual power-model input.
-- Use Energy history to export or import a validated SysWatt energy archive. Matching dates are replaced rather than added twice.
-- Missing data appears as `N/A`; SysWatt never substitutes a fake zero.
+## Key Features
 
-## Build and test
+### 🖥️ Windows-Native User Experience
+- **Utilitarian Desktop UI**: Clean Windows dialogs, Segoe UI typography, etched GroupBoxes, and DWM-enabled dark/light immersive title bars.
+- **Hero Telemetry Overview**: 4 prominent cards displaying **Wall Power Draw**, **CPU Package**, **GPU Board**, and **Today's Energy Draw**, alongside platform DC and cooling breakdowns.
+- **Live PC Run-Time / On-Time Counter**: Real-time Windows system boot uptime counter displayed directly in the status bar (`System On-time: 03:42:15 · SysWatt Active`).
+- **Synchronized Telemetry Charts**: Professional grid charts with configurable 1–240 minute rolling windows.
 
-Install the .NET 8 SDK, then run:
+### 📊 TrafficMonitor-Style Historical Energy Statistics
+Modeled directly after classic Windows utility statistics:
+- **List View**:
+  - Aggregated by **Day view**, **Week view**, or **Month view**.
+  - Columns: **Date**, **On Time** (active PC run time duration), **DC Load**, **Total Wall Draw**, **Average Watts**, and **Figure** inline bar.
+  - **Dynamic Scaling**: Toggle between **Linear scale** and a multi-decade **Logarithmic scale** to visualize small and large consumption periods.
+- **Calendar Heatmap View**:
+  - 7×6 calendar matrix with red weekend headers and colored daily energy indicator tiles.
+  - 5-tier consumption color legend (`0~1 kWh`, `1~3 kWh`, `3~6 kWh`, `6~12 kWh`, `12 kWh~`).
+  - Monthly summary footer with total kWh, average wattage, and peak recorded load.
+  - Full archive **Import** and **Export** capabilities.
+
+| Historical Energy — List View | Historical Energy — Calendar View |
+|:---:|:---:|
+| ![Historical Energy List](docs/screenshots/energy-list.png) | ![Historical Energy Calendar](docs/screenshots/energy-calendar.png) |
+
+### 📌 Windows Taskbar Tray Flyout
+- Compact taskbar flyout (390 × 550 px) with native drop-shadow elevation.
+- Live wall draw, today's energy accumulation, 3-minute rolling trend chart, and component power breakdown.
+- Pinnable toggle button (`[ 📌 Pin ]` / `[ 📌 Pinned ]`) and direct shortcut to Settings.
+
+| Tray Dashboard (Dark) | Tray Dashboard (Light) |
+|:---:|:---:|
+| ![Tray Dashboard Dark](docs/screenshots/tray-dashboard-dark.png) | ![Tray Dashboard Light](docs/screenshots/tray-dashboard-light.png) |
+
+### ⚙️ Tabbed Property Sheet Settings
+- Modeled on classic Windows Property Sheets with **[ OK ]**, **[ Cancel ]**, and **[ Apply ]** buttons.
+- Tabs: **General Settings**, **Power Model** (custom CPU/GPU envelopes and PSU efficiency), **Cooling & Inventory** (fans, drives, peripherals), and **Alert Rules** (custom threshold rules with toasts and banner alerts).
+
+![Option Settings](docs/screenshots/settings.png)
+
+### ⚡ Low Resource Footprint & Zero-Allocation Steady-State
+- **In-Memory SQLite Batch Ingestion**: Replaced 86,400 daily disk transactions with a 60-second / 60-sample in-memory ring buffer batch commit.
+- **Zero-Allocation Ring Buffers**: Telemetry time windows are sliced without allocating duplicate arrays each second.
+- **Single-Pass Sensor Mapping**: Zero-allocation sensor lookup eliminating LINQ per-tick overhead.
+- **Background Idle Suspension**: Telemetry rendering and chart calculations freeze automatically when minimized or hidden.
+
+---
+
+## Screenshots
+
+<details>
+<summary><b>Click to view full screenshot gallery</b></summary>
+
+### Live Power Dashboard
+![Main Dashboard](docs/screenshots/dashboard.png)
+
+### Historical Energy Statistics (List View)
+![Historical List](docs/screenshots/energy-list.png)
+
+### Historical Energy Statistics (Calendar Heatmap)
+![Historical Calendar](docs/screenshots/energy-calendar.png)
+
+### Option Settings Dialog
+![Option Settings](docs/screenshots/settings.png)
+
+### Quick Tray Dashboard (Dark & Light)
+![Tray Dark](docs/screenshots/tray-dashboard-dark.png)
+![Tray Light](docs/screenshots/tray-dashboard-light.png)
+
+### About & Developer Profiles Dialog
+![About Dialog](docs/screenshots/about.png)
+
+</details>
+
+---
+
+## Measurement Policy
+
+1. **Exact Sensors**: SysWatt prioritizes exact hardware-reported sensors (CPU package power, GPU board draw, fan RPMs, VRM temperatures) and never overwrites them.
+2. **Calibrated Hardware Models**: Storage drives use detected hardware classifications (NVMe, SATA SSD, HDD) plus real-time I/O throughput. Motherboard baseline, RAM, CPU/case cooling, displays, and external peripherals use calibrated models configurable in Settings.
+3. **Wall Power Integration**: Wall draw is computed as `PC Internal DC / PSU Efficiency + External Peripherals/Displays`, integrated continuously into daily kilowatt-hours (kWh).
+4. **Data Integrity**: Missing hardware sensors appear explicitly as `N/A`—SysWatt never invents artificial zero readings.
+
+---
+
+## Requirements & Building
+
+### System Requirements
+- **OS**: Windows 10 (version 1809 or newer) or Windows 11, x64.
+- **Framework**: .NET 8.0 Windows Runtime.
+- **Hardware Access**: Standard user privileges for Windows Performance counters and GPU metrics. Elevated administrator access or PawnIO driver is needed for direct Ryzen SMU and motherboard Super-I/O sensor headers.
+
+### Building from Source
 
 ```powershell
+# Restore NuGet dependencies
 dotnet restore SysWatt.sln --configfile NuGet.Config
-dotnet build SysWatt.sln --no-restore --configuration Release
-dotnet test SysWatt.sln --no-build --configuration Release
+
+# Build in Release mode
+dotnet build SysWatt.sln --configuration Release
+
+# Run automated tests (all 35+ pass)
+dotnet test SysWatt.sln --configuration Release
 ```
 
-Build release artifacts with:
+### Command Line Flags
 
-```powershell
-./scripts/package.ps1 -Version 0.2.0
-```
+| Flag | Description |
+|---|---|
+| `--minimized` | Start directly minimized to the system notification area. |
+| `--diagnose-sensors` | Run a diagnostic hardware scan and output raw sensor metadata. |
+| `--smoke-test` | Run an automated headless initialization and exit test. |
+| `--preview-dashboard` | Launch the main dashboard in standalone preview mode. |
+| `--preview-settings` | Open the Option Settings property sheet dialog. |
+| `--preview-energy` | Open the Historical Energy Statistics window. |
+| `--preview-tray` | Display the Quick Tray flyout near the notification area. |
 
-This compiles the self-contained single-file application into `artifacts/publish/v<Version>/` (e.g. `artifacts/publish/v0.2.0/`), generates the portable zip archive, and produces the Inno Setup installer if `ISCC.exe` is available. For full compilation and manual publishing instructions, see [compiling and publishing](docs/compiling-and-publishing.md).
+---
 
-## Troubleshooting
+## Bug Reporting & Feedback
 
-- **A reading is `N/A`:** the device/driver may not expose a compatible sensor. Export diagnostics from Settings and review the mapping explanation.
-- **A low-level CPU temperature or package-power reading is missing:** use **Restart as administrator** from the dashboard. Diagnostics identify whether access is permission-restricted or PawnIO is absent. The reading remains `N/A` until a hardware provider succeeds.
-- **HWiNFO/MSI Center is running at the same time:** low-level SMU/Super-I/O polling can conflict. Close other hardware monitors before judging SysWatt's direct collector.
-- **Tray icon is hidden:** open the Windows tray overflow and pin SysWatt.
-- **A calculated total looks wrong:** open Settings and adjust the detected storage, fan/cooling, motherboard/RAM, display, peripheral, PSU-efficiency, or CPU/GPU fallback envelope. Exact sensor readings remain labeled separately.
-- **Settings were reset:** malformed JSON is moved to `settings.json.invalid-<timestamp>` before defaults are loaded.
-- **A second launch exits:** this is expected; it signals the existing instance to open.
+Encountered an issue or have a feature suggestion?
+- Click **🐛 Report a Bug / Issue** inside the application's **About** dialog to open the issue tracker with diagnostic details.
+- Or open an issue directly on GitHub: [github.com/isharax9/PerfMetrics/issues](https://github.com/isharax9/PerfMetrics/issues/new)
 
-See [compiling and publishing](docs/compiling-and-publishing.md), [releasing](docs/releasing.md), [architecture](docs/architecture.md), [sensor mapping](docs/sensor-mapping.md), [power and alerts](docs/power-and-alerts.md), and the [manual test checklist](docs/manual-test-checklist.md).
+---
 
-## Contributing and security
+## Author & Developer
 
-Contributions are welcome; start with [CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues privately as described in [SECURITY.md](SECURITY.md). SysWatt is MIT-licensed; dependency notices are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Developed by **Ishara Lakshitha** ([@isharax9](https://github.com/isharax9)).
+
+Connect:
+- **LinkedIn**: [linkedin.com/in/isharax9](https://www.linkedin.com/in/isharax9/)
+- **Twitter / X**: [@isharax9](https://twitter.com/isharax9)
+- **Email**: [isharax9@gmail.com](mailto:isharax9@gmail.com)
+- **Buy Me A Coffee**: [buymeacoffee.com/macstudyroom](https://www.buymeacoffee.com/macstudyroom)
+- **Instagram**: [@mac_knight141](https://www.instagram.com/mac_knight141/)
+- **GitHub**: [github.com/isharax9](https://github.com/isharax9)
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

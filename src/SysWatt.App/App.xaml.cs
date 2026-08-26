@@ -51,12 +51,14 @@ public partial class App : System.Windows.Application
         var isSmokeTest = e.Args.Any(a => a.Equals("--smoke-test", StringComparison.OrdinalIgnoreCase));
         var sensorDiagnosticArgument = Array.FindIndex(e.Args, a => a.Equals("--diagnose-sensors", StringComparison.OrdinalIgnoreCase));
         var isSensorDiagnostic = sensorDiagnosticArgument >= 0;
+        var isRenderScreenshots = e.Args.Any(a => a.Equals("--render-screenshots", StringComparison.OrdinalIgnoreCase));
         if (isSensorDiagnostic) ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var instanceDiscriminator = isSettingsPreview ? "SettingsPreview"
             : isDashboardPreview ? "DashboardPreview"
             : isTrayPreview ? "TrayPreview"
             : isSmokeTest ? "SmokeTest"
             : isSensorDiagnostic ? "SensorDiagnostic"
+            : isRenderScreenshots ? "RenderScreenshots"
             : null;
         _singleInstance = new SingleInstanceCoordinator(instanceDiscriminator);
         if (!_singleInstance.IsPrimary)
@@ -126,6 +128,7 @@ public partial class App : System.Windows.Application
             _dashboard.EnergyHistoryRequested += (_, _) => OpenEnergyHistory();
             _dashboard.RestartElevatedRequested += async (_, _) => await RestartElevatedAsync();
             _trayDashboard.OpenFullDashboardRequested += (_, _) => _dashboard.ShowDashboard();
+            _trayDashboard.OpenSettingsRequested += (_, _) => OpenSettings();
             _tray = new TrayIconService(monitoring, _settings);
             _tray.QuickDashboardRequested += (_, _) => _trayDashboard.ToggleNearTray();
             _tray.MainDashboardRequested += (_, _) => _dashboard.ShowDashboard();
@@ -174,13 +177,13 @@ public partial class App : System.Windows.Application
                 await energyVm.RefreshAsync();
                 var energyWin = new EnergyHistoryWindow(energyVm);
                 energyWin.Show();
-                RenderWindowToPng(energyWin, 660, 520, Path.Combine(outDir, "energy_list_preview.png"));
+                RenderWindowToPng(energyWin, 720, 530, Path.Combine(outDir, "energy_list_preview.png"));
 
                 if (energyWin.Content is Grid rootGrid && rootGrid.Children.Count > 0 && rootGrid.Children[0] is System.Windows.Controls.TabControl tabs)
                 {
                     tabs.SelectedIndex = 1;
                     energyWin.UpdateLayout();
-                    RenderWindowToPng(energyWin, 660, 520, Path.Combine(outDir, "energy_calendar_preview.png"));
+                    RenderWindowToPng(energyWin, 720, 530, Path.Combine(outDir, "energy_calendar_preview.png"));
                 }
                 energyWin.Close();
 
@@ -190,8 +193,40 @@ public partial class App : System.Windows.Application
 
                 var aboutWin = new AboutWindow();
                 aboutWin.Show();
-                RenderWindowToPng(aboutWin, 520, 430, Path.Combine(outDir, "about_preview.png"));
+                RenderWindowToPng(aboutWin, 560, 500, Path.Combine(outDir, "about_preview.png"));
                 aboutWin.Close();
+
+                _trayDashboard.Show();
+                RenderWindowToPng(_trayDashboard, 390, 550, Path.Combine(outDir, "tray_preview.png"));
+
+                ThemeManager.Apply(AppTheme.Dark);
+                _trayDashboard.UpdateLayout();
+                RenderWindowToPng(_trayDashboard, 390, 550, Path.Combine(outDir, "tray_preview_dark.png"));
+
+                ThemeManager.Apply(AppTheme.Light);
+                _trayDashboard.UpdateLayout();
+                RenderWindowToPng(_trayDashboard, 390, 550, Path.Combine(outDir, "tray_preview_light.png"));
+                _trayDashboard.Hide();
+
+                try
+                {
+                    var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+                    while (current is not null && !File.Exists(Path.Combine(current.FullName, "SysWatt.sln")))
+                    {
+                        current = current.Parent;
+                    }
+                    var repoRoot = current?.FullName ?? Directory.GetCurrentDirectory();
+                    var docsScreenshots = Path.Combine(repoRoot, "docs", "screenshots");
+                    Directory.CreateDirectory(docsScreenshots);
+                    File.Copy(Path.Combine(outDir, "settings_preview.png"), Path.Combine(docsScreenshots, "settings.png"), true);
+                    File.Copy(Path.Combine(outDir, "energy_list_preview.png"), Path.Combine(docsScreenshots, "energy-list.png"), true);
+                    File.Copy(Path.Combine(outDir, "energy_calendar_preview.png"), Path.Combine(docsScreenshots, "energy-calendar.png"), true);
+                    File.Copy(Path.Combine(outDir, "dashboard_preview.png"), Path.Combine(docsScreenshots, "dashboard.png"), true);
+                    File.Copy(Path.Combine(outDir, "about_preview.png"), Path.Combine(docsScreenshots, "about.png"), true);
+                    File.Copy(Path.Combine(outDir, "tray_preview_dark.png"), Path.Combine(docsScreenshots, "tray-dashboard-dark.png"), true);
+                    File.Copy(Path.Combine(outDir, "tray_preview_light.png"), Path.Combine(docsScreenshots, "tray-dashboard-light.png"), true);
+                }
+                catch { }
 
                 await ExitAsync();
                 return;
@@ -452,8 +487,9 @@ public partial class App : System.Windows.Application
         window.UpdateLayout();
         if (window.Content is FrameworkElement element)
         {
-            var w = (int)Math.Max(10, element.ActualWidth > 0 ? element.ActualWidth : width - 16);
-            var h = (int)Math.Max(10, element.ActualHeight > 0 ? element.ActualHeight : height - 42);
+            element.UpdateLayout();
+            var w = (int)Math.Ceiling(element.ActualWidth > 0 ? element.ActualWidth : width - 16);
+            var h = (int)Math.Ceiling(element.ActualHeight > 0 ? element.ActualHeight : height - 39);
 
             var dv = new System.Windows.Media.DrawingVisual();
             using (var dc = dv.RenderOpen())

@@ -75,30 +75,20 @@
         <!-- 1. POWER OVERVIEW -->
         <GroupBox Header="Live Power &amp; Component Telemetry">
           <UniformGrid Columns="4" Margin="2,4,2,4">
-            <!-- Wall Power -->
+            <!-- Card 1: Wall Power -->
             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                     Background="{DynamicResource CardBackground}" CornerRadius="3" Padding="10,8" Margin="0,0,6,0">
               <StackPanel>
                 <TextBlock Text="WALL POWER DRAW" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" />
                 <TextBlock Text="{Binding SystemPower}" FontSize="26" FontWeight="Bold" Margin="0,4,0,1" Foreground="{DynamicResource AccentBrush}" />
-                <TextBlock Text="{Binding DcPower, StringFormat=Internal DC: {0}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                <TextBlock Text="{Binding DcPower, StringFormat=Internal DC: {0}}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{Binding StorageCoolingBoardPower, StringFormat='Platform &amp; cooling: {0}'}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
                 <TextBlock Text="{Binding SystemPowerStatus}" FontSize="10" Foreground="{DynamicResource MutedBrush}"
-                           TextTrimming="CharacterEllipsis" ToolTip="{Binding SystemPowerStatus}" Margin="0,4,0,0" />
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding SystemPowerStatus}" Margin="0,2,0,0" />
               </StackPanel>
             </Border>
 
-            <!-- Board + Cooling + Storage -->
-            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                    Background="{DynamicResource CardBackground}" CornerRadius="3" Padding="10,8" Margin="0,0,6,0">
-              <StackPanel>
-                <TextBlock Text="STORAGE + COOLING + BOARD" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" />
-                <TextBlock Text="{Binding StorageCoolingBoardPower}" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,2" />
-                <TextBlock Text="CALIBRATED HARDWARE MODEL" FontSize="10" Foreground="#E6A34A" FontWeight="SemiBold" />
-                <TextBlock Text="Motherboard, memory, cooling, NVMe/SSD" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" />
-              </StackPanel>
-            </Border>
-
-            <!-- CPU Package -->
+            <!-- Card 2: CPU Package -->
             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                     Background="{DynamicResource CardBackground}" CornerRadius="3" Padding="10,8" Margin="0,0,6,0">
               <StackPanel>
@@ -107,18 +97,33 @@
                   <TextBlock Text="{Binding CpuPower}" FontSize="24" FontWeight="SemiBold" />
                   <TextBlock Text="{Binding CpuTemperature}" FontSize="15" Margin="10,6,0,0" Foreground="#3C91E6" />
                 </StackPanel>
-                <TextBlock Text="{Binding CpuUsage, StringFormat=Utilization: {0}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                <TextBlock Text="{Binding CpuUsage, StringFormat=Utilization: {0}}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{Binding CpuPowerSource}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
               </StackPanel>
             </Border>
 
-            <!-- Today's Energy -->
+            <!-- Card 3: GPU Board / Package -->
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Background="{DynamicResource CardBackground}" CornerRadius="3" Padding="10,8" Margin="0,0,6,0">
+              <StackPanel>
+                <TextBlock Text="GPU BOARD" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" />
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
+                  <TextBlock Text="{Binding GpuPower}" FontSize="24" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding GpuTemperature}" FontSize="15" Margin="10,6,0,0" Foreground="#FFAA33" />
+                </StackPanel>
+                <TextBlock Text="{Binding GpuUsage, StringFormat=Utilization: {0}}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{Binding GpuPowerSource}" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
+              </StackPanel>
+            </Border>
+
+            <!-- Card 4: Today's Energy -->
             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                     Background="{DynamicResource CardBackground}" CornerRadius="3" Padding="10,8">
               <StackPanel>
                 <TextBlock Text="TODAY'S ENERGY DRAW" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" />
                 <TextBlock Text="{Binding TodayEnergy}" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,2" Foreground="{DynamicResource AccentBrush}" />
                 <TextBlock Text="ACCUMULATED TODAY" FontSize="10" Foreground="{DynamicResource MutedBrush}" />
-                <TextBlock Text="{Binding EnergyMeasurementNotice}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="{Binding EnergyMeasurementNotice}" FontSize="10" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
               </StackPanel>
             </Border>
           </UniformGrid>
@@ -291,8 +296,10 @@
         </Grid.ColumnDefinitions>
         <TextBlock Text="{Binding TelemetrySourceDetails, StringFormat=Telemetry: {0}}"
                    FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock Grid.Column="1" Text="SysWatt · Background Telemetry Active"
-                   FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <TextBlock Text="{Binding SystemUptimeText}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,6,0" />
+          <TextBlock Text="· SysWatt Active" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+        </StackPanel>
       </Grid>
     </Border>
   </Grid>

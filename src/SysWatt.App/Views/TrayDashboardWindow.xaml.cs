@@ -11,6 +11,7 @@ public partial class TrayDashboardWindow : Window
 {
     private bool _allowClose;
     public event EventHandler? OpenFullDashboardRequested;
+    public event EventHandler? OpenSettingsRequested;
 
     public TrayDashboardWindow()
     {
@@ -46,5 +47,10 @@ public partial class TrayDashboardWindow : Window
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.LeftButton == MouseButtonState.Pressed) DragMove(); }
     private void Close_Click(object sender, RoutedEventArgs e) => Hide();
+    private void Settings_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is DashboardViewModel { TrayPopupPinned: false }) Hide();
+        OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+    }
     private void OpenFull_Click(object sender, RoutedEventArgs e) { Hide(); OpenFullDashboardRequested?.Invoke(this, EventArgs.Empty); }
 }

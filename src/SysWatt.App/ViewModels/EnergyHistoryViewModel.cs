@@ -4,16 +4,23 @@ using SysWatt.App.Commands;
 using SysWatt.Core.Energy;
 using SysWatt.Core.Sensors;
 
+using System.Windows;
+
 namespace SysWatt.App.ViewModels;
 
 public sealed record EnergyListItem(
     string DateText,
+    string OnTimeText,
     string DcKwhText,
     string WallKwhText,
     string AverageWattsText,
     string PeakWattsText,
     double FigureWidthRatio,
-    string FigureColor);
+    string FigureColor)
+{
+    public GridLength FigureStarWidth => new(Math.Max(0.0001, FigureWidthRatio), GridUnitType.Star);
+    public GridLength FigureRemainingStarWidth => new(Math.Max(0.0001, 1.0 - FigureWidthRatio), GridUnitType.Star);
+}
 
 public sealed class CalendarDayItem : ViewModelBase
 {
@@ -52,6 +59,7 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
     private CalendarDayItem? _selectedCalendarDay;
     private string _monthSummary = string.Empty;
     private string _selectedDaySummary = string.Empty;
+    private IReadOnlyList<DailyEnergySummary> _cachedHistory = [];
     private IReadOnlyList<EnergyListItem> _listItems = [];
     private IReadOnlyList<CalendarDayItem> _calendarDays = [];
 
@@ -67,13 +75,25 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
     public string ViewType
     {
         get => _viewType;
-        set { if (Set(ref _viewType, value)) _ = RefreshAsync(); }
+        set
+        {
+            if (Set(ref _viewType, value))
+            {
+                BuildList();
+            }
+        }
     }
 
     public string FigureScale
     {
         get => _figureScale;
-        set { if (Set(ref _figureScale, value)) UpdateListFigures(); }
+        set
+        {
+            if (Set(ref _figureScale, value))
+            {
+                BuildList();
+            }
+        }
     }
 
     public int SelectedYear
@@ -91,21 +111,36 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
     public IReadOnlyList<EnergyListItem> ListItems => _listItems;
     public IReadOnlyList<CalendarDayItem> CalendarDays => _calendarDays;
     public string MonthSummary => _monthSummary;
-    public string SelectedDaySummary => _selectedDaySummary;
+    public string SelectedDaySummary
+    {
+        get => _selectedDaySummary;
+        private set => Set(ref _selectedDaySummary, value);
+    }
 
     public CalendarDayItem? SelectedCalendarDay
     {
         get => _selectedCalendarDay;
         set
         {
-            if (_selectedCalendarDay is not null) _selectedCalendarDay.IsSelected = false;
-            if (Set(ref _selectedCalendarDay, value) && value is not null)
+            if (Set(ref _selectedCalendarDay, value))
             {
-                value.IsSelected = true;
-                _selectedDaySummary = value.HasData
-                    ? $"{value.Date:yyyy/MM/dd}: {value.KilowattHours:0.00} kWh"
-                    : $"{value.Date:yyyy/MM/dd}: No recorded session";
-                OnPropertyChanged(nameof(SelectedDaySummary));
+                foreach (var day in _calendarDays)
+                {
+                    day.IsSelected = day == value;
+                }
+
+                if (value is not null && value.HasData)
+                {
+                    SelectedDaySummary = $"{value.Date:yyyy/MM/dd} ({value.Date:ddd}): {value.KilowattHours:0.00} kWh recorded.";
+                }
+                else if (value is not null)
+                {
+                    SelectedDaySummary = $"{value.Date:yyyy/MM/dd} ({value.Date:ddd}): No usage recorded.";
+                }
+                else
+                {
+                    SelectedDaySummary = string.Empty;
+                }
             }
         }
     }
@@ -120,13 +155,12 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
     public EnergyHistoryViewModel(IEnergyHistoryStore store)
     {
         _store = store;
-        PreviousMonthCommand = new(PreviousMonth);
-        NextMonthCommand = new(NextMonth);
-        CurrentMonthCommand = new(CurrentMonth);
-        OkCommand = new(() => RequestClose?.Invoke(this, EventArgs.Empty));
-        ImportCommand = new(() => ImportRequested?.Invoke(this, EventArgs.Empty));
-        ExportCommand = new(() => ExportRequested?.Invoke(this, EventArgs.Empty));
-        _ = RefreshAsync();
+        PreviousMonthCommand = new RelayCommand(PreviousMonth);
+        NextMonthCommand = new RelayCommand(NextMonth);
+        CurrentMonthCommand = new RelayCommand(CurrentMonth);
+        OkCommand = new RelayCommand(() => RequestClose?.Invoke(this, EventArgs.Empty));
+        ImportCommand = new RelayCommand(() => ImportRequested?.Invoke(this, EventArgs.Empty));
+        ExportCommand = new RelayCommand(() => ExportRequested?.Invoke(this, EventArgs.Empty));
     }
 
     public async Task RefreshAsync()
@@ -139,12 +173,13 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
             var startOfMonth = new DateOnly(year, month, 1);
             var endOfMonth = new DateOnly(year, month, daysInMonth);
 
-            // Fetch current month data plus recent 30 days
+            // Fetch current month data plus past 365 days of history for Day/Week/Month views
             var monthRange = await _store.GetRangeAsync(startOfMonth, endOfMonth);
-            var recent30Range = await _store.GetRangeAsync(DateOnly.FromDateTime(DateTime.Today.AddDays(-29)), DateOnly.FromDateTime(DateTime.Today));
+            var historyRange = await _store.GetRangeAsync(DateOnly.FromDateTime(DateTime.Today.AddDays(-365)), DateOnly.FromDateTime(DateTime.Today));
+            _cachedHistory = historyRange;
 
             BuildCalendar(year, month, monthRange);
-            BuildList(recent30Range);
+            BuildList();
         }
         catch { }
     }
@@ -213,7 +248,7 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
             var color = ColorForKwh(hasData, kwh);
             var isToday = date == DateOnly.FromDateTime(DateTime.Today);
             var tooltip = hasData
-                ? $"{date:yyyy/MM/dd} ({date:ddd}): {kwh:0.00} kWh · Avg {summary!.AverageWatts:0.#} W · Peak {summary.PeakWatts:0.#} W"
+                ? $"{date:yyyy/MM/dd} ({date:ddd}): {kwh:0.00} kWh · On-time: {summary!.DurationFormatted} · Avg {summary.AverageWatts:0.#} W · Peak {summary.PeakWatts:0.#} W"
                 : $"{date:yyyy/MM/dd} ({date:ddd}): No recorded usage";
 
             if (hasData)
@@ -224,18 +259,15 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
                 if (summary.PeakWatts > peakWatts) peakWatts = summary.PeakWatts;
             }
 
-            var item = new CalendarDayItem(day, date, true, hasData, kwh, color, isToday, tooltip);
-            if (isToday) item.IsSelected = true;
-            list.Add(item);
+            list.Add(new CalendarDayItem(day, date, true, hasData, kwh, color, isToday, tooltip));
         }
 
-        // Pad after up to 35 or 42
+        // Pad after up to 42 cells (6 rows x 7 cols)
         var remaining = 42 - list.Count;
-        if (remaining >= 7 && list.Count <= 35) remaining = 35 - list.Count;
+        var nextMonth = month == 12 ? 1 : month + 1;
+        var nextYear = month == 12 ? year + 1 : year;
         for (var i = 1; i <= remaining; i++)
         {
-            var nextMonth = month == 12 ? 1 : month + 1;
-            var nextYear = month == 12 ? year + 1 : year;
             var date = new DateOnly(nextYear, nextMonth, i);
             list.Add(new CalendarDayItem(i, date, false, false, 0, "Transparent", false, string.Empty));
         }
@@ -248,42 +280,156 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
         OnPropertyChanged(nameof(MonthSummary));
     }
 
-    private void BuildList(IReadOnlyList<DailyEnergySummary> rawDays)
+    private void BuildList()
     {
-        var days = rawDays.OrderByDescending(d => d.Date).ToList();
-        var maxKwh = days.Count > 0 ? days.Max(d => d.KilowattHours) : 1;
-        if (maxKwh < 0.001) maxKwh = 1;
-
-        var isLog = FigureScale.StartsWith("Log", StringComparison.OrdinalIgnoreCase);
-        var result = new List<EnergyListItem>(days.Count);
-
-        foreach (var day in days)
+        if (_cachedHistory.Count == 0)
         {
-            var ratio = isLog
-                ? (day.KilowattHours > 0 ? Math.Clamp(Math.Log10(day.KilowattHours + 1) / Math.Log10(maxKwh + 1), 0.03, 1.0) : 0)
-                : Math.Clamp(day.KilowattHours / maxKwh, day.KilowattHours > 0 ? 0.03 : 0, 1.0);
-
-            var dcKwh = day.KilowattHours * 0.88; // Hybrid model DC load
-            var color = ColorForKwh(day.HasData, day.KilowattHours);
-
-            result.Add(new EnergyListItem(
-                $"{day.Date:yyyy/MM/dd} ({day.Date:ddd})",
-                day.HasData ? $"{dcKwh:0.00} kWh" : "0.00 kWh",
-                day.HasData ? $"{day.KilowattHours:0.00} kWh" : "0.00 kWh",
-                day.HasData ? $"{day.AverageWatts:0.#} W" : "0.0 W",
-                day.HasData ? $"{day.PeakWatts:0.#} W" : "0.0 W",
-                ratio,
-                color));
+            _listItems = [];
+            OnPropertyChanged(nameof(ListItems));
+            return;
         }
 
-        _listItems = result;
+        var isLog = FigureScale.StartsWith("Log", StringComparison.OrdinalIgnoreCase);
+
+        if (ViewType.StartsWith("Week", StringComparison.OrdinalIgnoreCase))
+        {
+            // Group by calendar week (Monday to Sunday)
+            var weekGroups = _cachedHistory
+                .Where(d => d.HasData)
+                .GroupBy(d =>
+                {
+                    var dt = d.Date.ToDateTime(TimeOnly.MinValue);
+                    var diff = (7 + (dt.DayOfWeek - DayOfWeek.Monday)) % 7;
+                    var monday = DateOnly.FromDateTime(dt.AddDays(-diff));
+                    return monday;
+                })
+                .OrderByDescending(g => g.Key)
+                .Take(26)
+                .ToList();
+
+            var maxKwh = weekGroups.Count > 0 ? weekGroups.Max(g => g.Sum(x => x.KilowattHours)) : 1;
+            if (maxKwh < 0.001) maxKwh = 1;
+
+            var list = new List<EnergyListItem>(weekGroups.Count);
+            foreach (var group in weekGroups)
+            {
+                var monday = group.Key;
+                var sunday = monday.AddDays(6);
+                var totalKwh = group.Sum(x => x.KilowattHours);
+                var totalDc = totalKwh * 0.88;
+                var totalHours = group.Sum(x => x.DurationHours);
+                var avgWatts = totalHours > 0 ? (totalKwh * 1000) / totalHours : group.Average(x => x.AverageWatts);
+                var peakWatts = group.Max(x => x.PeakWatts);
+                var ratio = CalculateFigureRatio(totalKwh, maxKwh, isLog);
+                var color = ColorForKwh(totalKwh > 0, totalKwh / 7d);
+
+                list.Add(new EnergyListItem(
+                    $"{monday:yyyy/MM/dd} - {sunday:MM/dd}",
+                    FormatDuration(totalHours),
+                    $"{totalDc:0.00} kWh",
+                    $"{totalKwh:0.00} kWh",
+                    $"{avgWatts:0.#} W",
+                    $"{peakWatts:0.#} W",
+                    ratio,
+                    color));
+            }
+
+            _listItems = list;
+        }
+        else if (ViewType.StartsWith("Month", StringComparison.OrdinalIgnoreCase))
+        {
+            // Group by Year and Month
+            var monthGroups = _cachedHistory
+                .Where(d => d.HasData)
+                .GroupBy(d => (d.Date.Year, d.Date.Month))
+                .OrderByDescending(g => g.Key.Year).ThenByDescending(g => g.Key.Month)
+                .Take(24)
+                .ToList();
+
+            var maxKwh = monthGroups.Count > 0 ? monthGroups.Max(g => g.Sum(x => x.KilowattHours)) : 1;
+            if (maxKwh < 0.001) maxKwh = 1;
+
+            var list = new List<EnergyListItem>(monthGroups.Count);
+            foreach (var group in monthGroups)
+            {
+                var (yr, mo) = group.Key;
+                var totalKwh = group.Sum(x => x.KilowattHours);
+                var totalDc = totalKwh * 0.88;
+                var totalHours = group.Sum(x => x.DurationHours);
+                var avgWatts = totalHours > 0 ? (totalKwh * 1000) / totalHours : group.Average(x => x.AverageWatts);
+                var peakWatts = group.Max(x => x.PeakWatts);
+                var ratio = CalculateFigureRatio(totalKwh, maxKwh, isLog);
+                var color = ColorForKwh(totalKwh > 0, totalKwh / 30d);
+
+                list.Add(new EnergyListItem(
+                    $"{yr:0000}/{mo:00} ({new DateTime(yr, mo, 1):MMM})",
+                    FormatDuration(totalHours),
+                    $"{totalDc:0.00} kWh",
+                    $"{totalKwh:0.00} kWh",
+                    $"{avgWatts:0.#} W",
+                    $"{peakWatts:0.#} W",
+                    ratio,
+                    color));
+            }
+
+            _listItems = list;
+        }
+        else
+        {
+            // Day view: past 30 days
+            var recentDays = _cachedHistory.OrderByDescending(d => d.Date).Take(30).ToList();
+            var maxKwh = recentDays.Count > 0 ? recentDays.Max(d => d.KilowattHours) : 1;
+            if (maxKwh < 0.001) maxKwh = 1;
+
+            var list = new List<EnergyListItem>(recentDays.Count);
+            foreach (var day in recentDays)
+            {
+                var ratio = CalculateFigureRatio(day.KilowattHours, maxKwh, isLog);
+                var dcKwh = day.KilowattHours * 0.88;
+                var color = ColorForKwh(day.HasData, day.KilowattHours);
+
+                list.Add(new EnergyListItem(
+                    $"{day.Date:yyyy/MM/dd} ({day.Date:ddd})",
+                    day.HasData ? day.DurationFormatted : "0m",
+                    day.HasData ? $"{dcKwh:0.00} kWh" : "0.00 kWh",
+                    day.HasData ? $"{day.KilowattHours:0.00} kWh" : "0.00 kWh",
+                    day.HasData ? $"{day.AverageWatts:0.#} W" : "0.0 W",
+                    day.HasData ? $"{day.PeakWatts:0.#} W" : "0.0 W",
+                    ratio,
+                    color));
+            }
+
+            _listItems = list;
+        }
+
         OnPropertyChanged(nameof(ListItems));
     }
 
-    private void UpdateListFigures()
+    private static double CalculateFigureRatio(double kwh, double maxKwh, bool isLog)
     {
-        if (_listItems.Count == 0) return;
-        _ = RefreshAsync();
+        if (kwh <= 0.0001 || maxKwh <= 0.0001) return 0;
+        if (!isLog)
+        {
+            return Math.Clamp(kwh / maxKwh, 0.04, 1.0);
+        }
+
+        // Authentic logarithmic scale:
+        // Dynamic decade response from 0.001 kWh (1 Wh) to maxKwh
+        const double minKwh = 0.001;
+        var logMin = Math.Log10(minKwh);
+        var logMax = Math.Log10(Math.Max(maxKwh, minKwh * 10));
+        var logVal = Math.Log10(Math.Max(kwh, minKwh));
+        var logRatio = (logVal - logMin) / (logMax - logMin);
+        return Math.Clamp(logRatio, 0.08, 1.0);
+    }
+
+    private static string FormatDuration(double totalHours)
+    {
+        if (totalHours <= 0) return "0m";
+        var span = TimeSpan.FromHours(totalHours);
+        return span.TotalHours >= 1
+            ? $"{(int)span.TotalHours}h {span.Minutes:00}m"
+            : $"{span.Minutes}m {span.Seconds:00}s";
     }
 
     private static string ColorForKwh(bool hasData, double kwh)
