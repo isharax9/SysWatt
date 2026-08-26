@@ -26,7 +26,7 @@ public sealed class SingleInstanceCoordinator : IDisposable
             await client.ConnectAsync(1000);
             await client.WriteAsync(new byte[] { 1 });
         }
-        catch (TimeoutException) { }
+        catch (Exception) { }
     }
 
     public void StartListening(Action activate)

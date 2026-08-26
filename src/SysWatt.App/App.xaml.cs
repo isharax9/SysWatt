@@ -51,12 +51,14 @@ public partial class App : System.Windows.Application
         var isSmokeTest = e.Args.Any(a => a.Equals("--smoke-test", StringComparison.OrdinalIgnoreCase));
         var sensorDiagnosticArgument = Array.FindIndex(e.Args, a => a.Equals("--diagnose-sensors", StringComparison.OrdinalIgnoreCase));
         var isSensorDiagnostic = sensorDiagnosticArgument >= 0;
+        var isRenderScreenshots = e.Args.Any(a => a.Equals("--render-screenshots", StringComparison.OrdinalIgnoreCase));
         if (isSensorDiagnostic) ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var instanceDiscriminator = isSettingsPreview ? "SettingsPreview"
             : isDashboardPreview ? "DashboardPreview"
             : isTrayPreview ? "TrayPreview"
             : isSmokeTest ? "SmokeTest"
             : isSensorDiagnostic ? "SensorDiagnostic"
+            : isRenderScreenshots ? "RenderScreenshots"
             : null;
         _singleInstance = new SingleInstanceCoordinator(instanceDiscriminator);
         if (!_singleInstance.IsPrimary)
@@ -126,6 +128,7 @@ public partial class App : System.Windows.Application
             _dashboard.EnergyHistoryRequested += (_, _) => OpenEnergyHistory();
             _dashboard.RestartElevatedRequested += async (_, _) => await RestartElevatedAsync();
             _trayDashboard.OpenFullDashboardRequested += (_, _) => _dashboard.ShowDashboard();
+            _trayDashboard.OpenSettingsRequested += (_, _) => OpenSettings();
             _tray = new TrayIconService(monitoring, _settings);
             _tray.QuickDashboardRequested += (_, _) => _trayDashboard.ToggleNearTray();
             _tray.MainDashboardRequested += (_, _) => _dashboard.ShowDashboard();
@@ -192,6 +195,18 @@ public partial class App : System.Windows.Application
                 aboutWin.Show();
                 RenderWindowToPng(aboutWin, 520, 430, Path.Combine(outDir, "about_preview.png"));
                 aboutWin.Close();
+
+                _trayDashboard.Show();
+                RenderWindowToPng(_trayDashboard, 390, 550, Path.Combine(outDir, "tray_preview.png"));
+
+                ThemeManager.Apply(AppTheme.Dark);
+                _trayDashboard.UpdateLayout();
+                RenderWindowToPng(_trayDashboard, 390, 550, Path.Combine(outDir, "tray_preview_dark.png"));
+
+                ThemeManager.Apply(AppTheme.Light);
+                _trayDashboard.UpdateLayout();
+                RenderWindowToPng(_trayDashboard, 390, 550, Path.Combine(outDir, "tray_preview_light.png"));
+                _trayDashboard.Hide();
 
                 await ExitAsync();
                 return;
