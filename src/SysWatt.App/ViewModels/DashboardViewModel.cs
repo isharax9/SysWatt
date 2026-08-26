@@ -48,6 +48,16 @@ public sealed class DashboardViewModel : ViewModelBase, IDisposable
     }
 
     public string UpdatedText => $"LIVE · {_snapshot.Timestamp.ToLocalTime():HH:mm:ss}";
+    public string SystemUptimeText
+    {
+        get
+        {
+            var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+            return uptime.TotalDays >= 1
+                ? $"System On-time: {(int)uptime.TotalHours}h {uptime.Minutes:00}m {uptime.Seconds:00}s"
+                : $"System On-time: {uptime.Hours:00}:{uptime.Minutes:00}:{uptime.Seconds:00}";
+        }
+    }
     public string TelemetrySourceBadge => _snapshot.Source switch
     {
         TelemetrySource.HWiNFOBridge => "HWiNFO BRIDGE",
