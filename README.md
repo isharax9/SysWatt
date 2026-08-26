@@ -54,10 +54,10 @@ dotnet test SysWatt.sln --no-build --configuration Release
 Build release artifacts with:
 
 ```powershell
-./scripts/package.ps1 -Version 0.1.0
+./scripts/package.ps1 -Version 0.2.0
 ```
 
-Inno Setup 6 is optional locally; when `ISCC.exe` is available the script also creates the per-user installer. The self-contained single-file publish is deliberately untrimmed because hardware libraries and WPF may rely on reflection and native resources.
+This compiles the self-contained single-file application into `artifacts/publish/v<Version>/` (e.g. `artifacts/publish/v0.2.0/`), generates the portable zip archive, and produces the Inno Setup installer if `ISCC.exe` is available. For full compilation and manual publishing instructions, see [compiling and publishing](docs/compiling-and-publishing.md).
 
 ## Troubleshooting
 
@@ -69,7 +69,7 @@ Inno Setup 6 is optional locally; when `ISCC.exe` is available the script also c
 - **Settings were reset:** malformed JSON is moved to `settings.json.invalid-<timestamp>` before defaults are loaded.
 - **A second launch exits:** this is expected; it signals the existing instance to open.
 
-See [architecture](docs/architecture.md), [sensor mapping](docs/sensor-mapping.md), [power and alerts](docs/power-and-alerts.md), and the [manual test checklist](docs/manual-test-checklist.md).
+See [compiling and publishing](docs/compiling-and-publishing.md), [releasing](docs/releasing.md), [architecture](docs/architecture.md), [sensor mapping](docs/sensor-mapping.md), [power and alerts](docs/power-and-alerts.md), and the [manual test checklist](docs/manual-test-checklist.md).
 
 ## Contributing and security
 

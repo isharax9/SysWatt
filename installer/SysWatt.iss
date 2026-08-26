@@ -2,7 +2,7 @@
   #define MyAppVersion "0.1.0"
 #endif
 #ifndef PublishDir
-  #define PublishDir "..\artifacts\publish"
+  #define PublishDir "..\artifacts\publish\v" + MyAppVersion
 #endif
 
 [Setup]
