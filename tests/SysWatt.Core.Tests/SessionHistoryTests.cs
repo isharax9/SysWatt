@@ -15,6 +15,20 @@ public sealed class SessionHistoryTests
         Assert.Equal([2d, 3d], history.Get(MetricKind.CpuUsage).Select(p => p.Value));
     }
 
+    [Fact]
+    public void GetWindowReturnsOnlyPointsWithinCutoff()
+    {
+        var history = new SessionHistory(10);
+        history.Add(Snapshot(10));
+        history.Add(Snapshot(20));
+        history.Add(Snapshot(30));
+        history.Add(Snapshot(40));
+
+        var cutoff = DateTimeOffset.UnixEpoch.AddSeconds(25);
+        var window = history.GetWindow(MetricKind.CpuUsage, cutoff);
+        Assert.Equal([30d, 40d], window.Select(p => p.Value));
+    }
+
     private static MetricSnapshot Snapshot(double value)
     {
         var at = DateTimeOffset.UnixEpoch.AddSeconds(value);

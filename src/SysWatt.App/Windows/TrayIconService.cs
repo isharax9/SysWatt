@@ -19,6 +19,7 @@ public sealed class TrayIconService : IDisposable
 
     public event EventHandler? QuickDashboardRequested;
     public event EventHandler? MainDashboardRequested;
+    public event EventHandler? EnergyHistoryRequested;
     public event EventHandler? SettingsRequested;
     public event EventHandler? ExitRequested;
     public event EventHandler<bool>? StartupChanged;
@@ -30,6 +31,7 @@ public sealed class TrayIconService : IDisposable
         var menu = new ContextMenuStrip();
         menu.Items.Add("Show Quick Dashboard", null, (_, _) => QuickDashboardRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add("Open Full Dashboard", null, (_, _) => MainDashboardRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Historical Energy Statistics", null, (_, _) => EnergyHistoryRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add("Settings", null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
         _startupItem = new ToolStripMenuItem("Start with Windows") { Checked = settings.StartWithWindows, CheckOnClick = true };
         _startupItem.CheckedChanged += (_, _) => StartupChanged?.Invoke(this, _startupItem.Checked);
@@ -110,8 +112,20 @@ public sealed class TrayIconService : IDisposable
         _ => value >= 1000 ? $"{value / 1000:0.0}k" : $"{value:0}"
     };
 
+    private string? _lastRenderedText;
+    private bool? _lastRenderedHasValue;
+
+    private bool _disposed;
+
     private void UpdateIcon(double? value, string text)
     {
+        if (_disposed) return;
+        if (text == _lastRenderedText && value.HasValue == _lastRenderedHasValue && _renderedIcon is not null)
+            return;
+
+        _lastRenderedText = text;
+        _lastRenderedHasValue = value.HasValue;
+
         using var bitmap = new Bitmap(32, 32);
         using (var graphics = Graphics.FromImage(bitmap))
         {
@@ -129,11 +143,13 @@ public sealed class TrayIconService : IDisposable
         var handle = bitmap.GetHicon();
         try
         {
+            if (_disposed) return;
             var next = (Icon)Icon.FromHandle(handle).Clone();
             _notifyIcon.Icon = next;
             _renderedIcon?.Dispose();
             _renderedIcon = next;
         }
+        catch { }
         finally { DestroyIcon(handle); }
     }
 
@@ -144,6 +160,8 @@ public sealed class TrayIconService : IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _monitoring.SnapshotUpdated -= OnSnapshotUpdated;
         _monitoring.AlertTriggered -= OnAlertTriggered;
         _monitoring.TelemetryModeChanged -= OnTelemetryModeChanged;

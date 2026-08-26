@@ -44,9 +44,18 @@ public sealed class TelemetryChart : FrameworkElement
     public double SecondaryMinimum { get => (double)GetValue(SecondaryMinimumProperty); set => SetValue(SecondaryMinimumProperty, value); }
     public double SecondaryMaximum { get => (double)GetValue(SecondaryMaximumProperty); set => SetValue(SecondaryMaximumProperty, value); }
 
+    private static readonly Typeface LabelTypeface = new("Segoe UI");
+    private static readonly Brush LabelBrush = new SolidColorBrush(Color.FromRgb(137, 156, 168));
+
+    static TelemetryChart()
+    {
+        LabelBrush.Freeze();
+    }
+
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
+        if (!IsVisible) return;
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var hasSecondary = SecondaryValues is not null;
         var plot = new Rect(50, 12, Math.Max(0, ActualWidth - (hasSecondary ? 104 : 66)), Math.Max(0, ActualHeight - 40));
@@ -66,12 +75,12 @@ public sealed class TelemetryChart : FrameworkElement
             dc.DrawLine(gridPen, new Point(x, plot.Top), new Point(x, plot.Bottom));
         }
 
-        var points = Values?.ToArray() ?? [];
-        var (min, max) = Scale(points, Minimum, Maximum);
-        var primaryHasData = points.Any(point => point.Value.HasValue && double.IsFinite(point.Value.Value));
+        var points = Values as IReadOnlyList<HistoryPoint> ?? Values?.ToList() ?? (IReadOnlyList<HistoryPoint>)[];
+        var (min, max, countValid) = Scale(points, Minimum, Maximum);
+        var primaryHasData = countValid > 0;
         DrawLabel(dc, primaryHasData ? $"{max:0.#}{Unit}" : "N/A", new Point(0, plot.Top - 7), dpi);
         DrawLabel(dc, $"{min:0.#}{Unit}", new Point(0, plot.Bottom - 7), dpi);
-        if (points.Length > 0)
+        if (points.Count > 0)
         {
             DrawLabel(dc, points[0].Timestamp.ToLocalTime().ToString("HH:mm"), new Point(plot.Left, plot.Bottom + 8), dpi);
             var end = Format(points[^1].Timestamp.ToLocalTime().ToString("HH:mm"), dpi);
@@ -79,12 +88,11 @@ public sealed class TelemetryChart : FrameworkElement
         }
         DrawSeries(dc, points, plot, min, max, Stroke, true);
 
-        var secondary = SecondaryValues?.ToArray() ?? [];
-        if (secondary.Length > 0)
+        var secondary = SecondaryValues as IReadOnlyList<HistoryPoint> ?? SecondaryValues?.ToList() ?? (IReadOnlyList<HistoryPoint>)[];
+        if (secondary.Count > 0)
         {
-            var (secondaryMin, secondaryMax) = Scale(secondary, SecondaryMinimum, SecondaryMaximum);
-            var secondaryHasData = secondary.Any(point => point.Value.HasValue && double.IsFinite(point.Value.Value));
-            var top = Format(secondaryHasData ? $"{secondaryMax:0.#}{SecondaryUnit}" : "N/A", dpi);
+            var (secondaryMin, secondaryMax, secondaryCountValid) = Scale(secondary, SecondaryMinimum, SecondaryMaximum);
+            var top = Format(secondaryCountValid > 0 ? $"{secondaryMax:0.#}{SecondaryUnit}" : "N/A", dpi);
             var bottom = Format($"{secondaryMin:0.#}{SecondaryUnit}", dpi);
             dc.DrawText(top, new Point(plot.Right + 8, plot.Top - 7));
             dc.DrawText(bottom, new Point(plot.Right + 8, plot.Bottom - 7));
@@ -92,34 +100,60 @@ public sealed class TelemetryChart : FrameworkElement
         }
     }
 
-    private static (double Minimum, double Maximum) Scale(IReadOnlyList<HistoryPoint> points, double requestedMinimum, double requestedMaximum)
+    private static (double Minimum, double Maximum, int ValidCount) Scale(IReadOnlyList<HistoryPoint> points, double requestedMinimum, double requestedMaximum)
     {
-        var valid = points.Where(p => p.Value.HasValue && double.IsFinite(p.Value.Value)).Select(p => p.Value!.Value).ToArray();
-        var min = double.IsNaN(requestedMinimum) ? (valid.Length == 0 ? 0 : valid.Min()) : requestedMinimum;
-        var max = double.IsNaN(requestedMaximum) ? (valid.Length == 0 ? 1 : valid.Max()) : requestedMaximum;
+        var min = double.MaxValue;
+        var max = double.MinValue;
+        var validCount = 0;
+        for (var i = 0; i < points.Count; i++)
+        {
+            var v = points[i].Value;
+            if (!v.HasValue || !double.IsFinite(v.Value)) continue;
+            validCount++;
+            if (v.Value < min) min = v.Value;
+            if (v.Value > max) max = v.Value;
+        }
+
+        if (validCount == 0)
+        {
+            min = double.IsNaN(requestedMinimum) ? 0 : requestedMinimum;
+            max = double.IsNaN(requestedMaximum) ? 1 : requestedMaximum;
+        }
+        else
+        {
+            if (!double.IsNaN(requestedMinimum)) min = requestedMinimum;
+            if (!double.IsNaN(requestedMaximum)) max = requestedMaximum;
+        }
+
         if (Math.Abs(max - min) < 0.001) { min = Math.Max(0, min - 1); max += 1; }
         if (double.IsNaN(requestedMinimum)) min = Math.Min(0, min);
         if (double.IsNaN(requestedMaximum)) max *= 1.08;
-        return (min, max);
+        return (min, max, validCount);
     }
 
-    private static void DrawSeries(DrawingContext dc, HistoryPoint[] points, Rect plot, double min, double max, Brush stroke, bool fillArea)
+    private static void DrawSeries(DrawingContext dc, IReadOnlyList<HistoryPoint> points, Rect plot, double min, double max, Brush stroke, bool fillArea)
     {
-        var valid = points.Where(p => p.Value.HasValue && double.IsFinite(p.Value.Value)).ToArray();
-        if (valid.Length < 2) return;
+        if (points.Count < 2) return;
         var lineGeometry = new StreamGeometry();
         var areaGeometry = new StreamGeometry();
+        var validCount = 0;
+        Point lastValidPoint = default;
+
         using (var lineContext = lineGeometry.Open())
         using (var areaContext = areaGeometry.Open())
         {
             var started = false;
             Point first = default;
             Point last = default;
-            for (var i = 0; i < points.Length; i++)
+            for (var i = 0; i < points.Count; i++)
             {
-                if (!points[i].Value.HasValue || !double.IsFinite(points[i].Value!.Value)) { started = false; continue; }
-                var point = new Point(plot.Left + i * plot.Width / Math.Max(1, points.Length - 1),
-                    plot.Bottom - Math.Clamp((points[i].Value!.Value - min) / (max - min), 0, 1) * plot.Height);
+                var v = points[i].Value;
+                if (!v.HasValue || !double.IsFinite(v.Value)) { started = false; continue; }
+                validCount++;
+                var point = new Point(plot.Left + i * plot.Width / Math.Max(1, points.Count - 1),
+                    plot.Bottom - Math.Clamp((v.Value - min) / (max - min), 0, 1) * plot.Height);
+                lastValidPoint = point;
+
                 if (!started)
                 {
                     lineContext.BeginFigure(point, false, false);
@@ -141,6 +175,8 @@ public sealed class TelemetryChart : FrameworkElement
                 areaContext.LineTo(new Point(first.X, plot.Bottom), true, false);
             }
         }
+
+        if (validCount < 2) return;
         lineGeometry.Freeze(); areaGeometry.Freeze();
         if (fillArea)
         {
@@ -148,16 +184,13 @@ public sealed class TelemetryChart : FrameworkElement
             dc.DrawGeometry(fill, null, areaGeometry);
         }
         var pen = new Pen(stroke, 2) { LineJoin = PenLineJoin.Round };
+        pen.Freeze();
         dc.DrawGeometry(null, pen, lineGeometry);
-        var latest = valid[^1];
-        var latestIndex = Array.IndexOf(points, latest);
-        var latestPoint = new Point(plot.Left + latestIndex * plot.Width / Math.Max(1, points.Length - 1),
-            plot.Bottom - Math.Clamp((latest.Value!.Value - min) / (max - min), 0, 1) * plot.Height);
-        dc.DrawEllipse(stroke, new Pen(new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)), 1), latestPoint, 3.5, 3.5);
+        dc.DrawEllipse(stroke, null, lastValidPoint, 3.5, 3.5);
     }
 
     private static void DrawLabel(DrawingContext dc, string text, Point point, double dpi) => dc.DrawText(Format(text, dpi), point);
 
     private static FormattedText Format(string text, double dpi) => new(text, CultureInfo.CurrentCulture, System.Windows.FlowDirection.LeftToRight,
-        new Typeface("Segoe UI"), 10, new SolidColorBrush(Color.FromRgb(137, 156, 168)), dpi);
+        LabelTypeface, 10, LabelBrush, dpi);
 }

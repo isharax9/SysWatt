@@ -1,23 +1,19 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Input;
+using SysWatt.App.Theming;
 
 namespace SysWatt.App.Views;
 
 public partial class AboutWindow : Window
 {
-    public string Version { get; } = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.1.0";
+    public string Version { get; } = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 
     public AboutWindow()
     {
         InitializeComponent();
         DataContext = this;
-    }
-
-    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        ThemeManager.ApplyToWindow(this);
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

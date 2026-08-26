@@ -18,6 +18,8 @@ public sealed class HWiNFOSharedMemoryProvider : IRawSensorProvider
     private const int SensorElementSize = 264;
     private const int ReadingElementSize = 316;
 
+    private byte[]? _buffer;
+
     public string Name => "HWiNFO Shared Memory";
 
     public Task<IReadOnlyList<RawSensorReading>> ReadAsync(CancellationToken cancellationToken)
@@ -37,9 +39,10 @@ public sealed class HWiNFOSharedMemoryProvider : IRawSensorProvider
 
             try
             {
-                var bytes = new byte[checked((int)accessor.Capacity)];
-                accessor.ReadArray(0, bytes, 0, bytes.Length);
-                var result = Parse(bytes, now);
+                var capacity = checked((int)accessor.Capacity);
+                if (_buffer is null || _buffer.Length != capacity) _buffer = new byte[capacity];
+                accessor.ReadArray(0, _buffer, 0, capacity);
+                var result = Parse(_buffer, now);
                 return Task.FromResult<IReadOnlyList<RawSensorReading>>(result);
             }
             finally

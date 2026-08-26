@@ -2,7 +2,7 @@
 
 SysWatt is a standalone Windows hardware power and energy monitor. It combines embedded LibreHardwareMonitor access, Windows-native activity counters, Windows hardware inventory, and an optional HWiNFO shared-memory bridge. Its live graph window is configurable from 1 to 240 minutes, and daily energy history is stored locally in SQLite.
 
-> **Status:** `0.1.0` pre-release. The architecture and automated domain tests are ready; real-hardware behavior still needs validation across more systems. The Ryzen 5 3600 / RTX 3060 target is an initial manual-test target, not a compatibility claim.
+> **Status:** `1.0.0` first public release. Real-hardware behavior continues to be validated across additional systems. The Ryzen 5 3600 / RTX 3060 target is an initial manual-test target, not a universal compatibility claim.
 
 ![SysWatt redesigned settings](docs/screenshots/settings.png)
 
