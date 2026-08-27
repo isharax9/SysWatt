@@ -13,9 +13,19 @@ public partial class EnergyHistoryWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        Loaded += LoadHistoryOnFirstShow;
         viewModel.RequestClose += (_, _) => Close();
         viewModel.ImportRequested += (_, _) => ImportRequested?.Invoke(this, EventArgs.Empty);
         viewModel.ExportRequested += (_, _) => ExportRequested?.Invoke(this, EventArgs.Empty);
         ThemeManager.ApplyToWindow(this);
+    }
+
+    private async void LoadHistoryOnFirstShow(object sender, RoutedEventArgs e)
+    {
+        Loaded -= LoadHistoryOnFirstShow;
+        if (DataContext is EnergyHistoryViewModel viewModel)
+        {
+            await viewModel.RefreshAsync();
+        }
     }
 }

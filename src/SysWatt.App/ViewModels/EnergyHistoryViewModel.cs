@@ -62,6 +62,7 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
     private IReadOnlyList<DailyEnergySummary> _cachedHistory = [];
     private IReadOnlyList<EnergyListItem> _listItems = [];
     private IReadOnlyList<CalendarDayItem> _calendarDays = [];
+    private string _statusMessage = "Loading historical energy data…";
 
     public event EventHandler? RequestClose;
     public event EventHandler? ImportRequested;
@@ -111,6 +112,11 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
     public IReadOnlyList<EnergyListItem> ListItems => _listItems;
     public IReadOnlyList<CalendarDayItem> CalendarDays => _calendarDays;
     public string MonthSummary => _monthSummary;
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set => Set(ref _statusMessage, value);
+    }
     public string SelectedDaySummary
     {
         get => _selectedDaySummary;
@@ -165,6 +171,7 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
 
     public async Task RefreshAsync()
     {
+        StatusMessage = "Loading historical energy data…";
         try
         {
             var year = SelectedYear;
@@ -180,8 +187,14 @@ public sealed class EnergyHistoryViewModel : ViewModelBase
 
             BuildCalendar(year, month, monthRange);
             BuildList();
+            StatusMessage = historyRange.Any(day => day.HasData)
+                ? string.Empty
+                : "No historical energy data has been recorded yet.";
         }
-        catch { }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Historical energy data could not be loaded: {ex.Message}";
+        }
     }
 
     private void PreviousMonth()
