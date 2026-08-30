@@ -264,7 +264,10 @@ public partial class App : System.Windows.Application
                 return;
             }
 
-            if (!_settings.StartMinimized && !commandLineMinimized) _dashboard.ShowDashboard();
+            // Always show the dashboard on a normal launch (e.g. desktop icon).
+            // The --minimized flag is only passed by the Task Scheduler startup task,
+            // so auto-starts remain hidden while manual launches always open the dashboard.
+            if (!commandLineMinimized) _dashboard.ShowDashboard();
         }
         catch (Exception ex)
         {
