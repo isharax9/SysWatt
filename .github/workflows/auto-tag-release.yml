@@ -1,0 +1,55 @@
+name: Auto Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-release:
+    # Only run when the PR was actually merged (not just closed/abandoned).
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse version from PR title
+        id: version
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          # Match titles like "v1.2.3" or "1.2.3" or "v1.2.3-beta.1"
+          if [[ "$TITLE" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            VERSION="v${BASH_REMATCH[1]}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Detected release version: $VERSION"
+          else
+            echo "PR title '$TITLE' is not a version string - skipping auto-release."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.version.outputs.version != ''
+        with:
+          fetch-depth: 0
+
+      - name: Check tag does not already exist
+        if: steps.version.outputs.version != ''
+        id: tag-check
+        run: |
+          TAG="${{ steps.version.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q "$TAG"; then
+            echo "Tag $TAG already exists - skipping to avoid duplicate release."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push release tag
+        if: steps.version.outputs.version != '' && steps.tag-check.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG="${{ steps.version.outputs.version }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          echo "Tag $TAG pushed - release.yml will now build and publish the release."
