@@ -4,7 +4,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-08-26
+## [1.1.3] - 2026-09-11
+
+### Added
+
+- **1080p 60FPS Showcase Video**: Embedded high-definition video walkthrough (`SysWatt_Intro_Enhanced.mp4`) with human-like neural AI narration (`en-US-AndrewMultilingualNeural`) and ambient electronic soundtrack.
+- **Real-Time Threshold Alert & Toast Demonstration**: Integrated live hardware alert workflow demonstrating the warning banner and native Windows toast notification (`CpuTemperature is 82.3 °C`).
+- **Interactive Video Showcase Section in README**: Featuring an interactive banner, direct video links, and feature callouts.
+- **Live Hardware Telemetry Screenshot Overhaul**: Replaced all repository and README screenshots with high-resolution captures featuring full hardware sensor access, live CPU/GPU correlation charts, September 2026 historical energy lists/calendars, Power Model envelopes, and dark/light tray dashboards.
+
+### Changed
+
+- Updated author and creator attribution across all title cards, window headers, outro cards, and documentation to **Ishara Lakshitha** ([@isharax9](https://github.com/isharax9)).
+- Bumped application version prefix to `1.1.3`.
 
 ### Added
 
