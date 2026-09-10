@@ -27,13 +27,29 @@ SysWatt combines embedded sensor access (LibreHardwareMonitor), native Windows a
 
 ---
 
+## 🎬 1080p Video Showcase & Walkthrough
+
+<div align="center">
+
+[![SysWatt 1080p Feature Showcase](docs/screenshots/video-showcase.png)](docs/videos/SysWatt_Intro_Enhanced.mp4)
+
+<sub>▶️ <b><a href="docs/videos/SysWatt_Intro_Enhanced.mp4">Click to Watch Full 1080p 60FPS Video Showcase (2 min 38 sec)</a></b> · High-Resolution Telemetry · Live Toast Alerts · Neural Voiceover by Ishara Lakshitha</sub>
+
+</div>
+
+---
+
 ## Key Features
 
 ### 🖥️ Windows-Native User Experience
 - **Utilitarian Desktop UI**: Clean Windows dialogs, Segoe UI typography, etched GroupBoxes, and DWM-enabled dark/light immersive title bars.
 - **Hero Telemetry Overview**: 4 prominent cards displaying **Wall Power Draw**, **CPU Package**, **GPU Board**, and **Today's Energy Draw**, alongside platform DC and cooling breakdowns.
-- **Live PC Run-Time / On-Time Counter**: Real-time Windows system boot uptime counter displayed directly in the status bar (`System On-time: 03:42:15 · SysWatt Active`).
+- **Live PC Run-Time / On-Time Counter**: Real-time Windows system boot uptime counter displayed directly in the status bar (`System On-time: 00:34:19 · SysWatt Active`).
 - **Synchronized Telemetry Charts**: Professional grid charts with configurable 1–240 minute rolling windows.
+
+| Main Dashboard (Light Mode) | Main Dashboard (Dark Mode) |
+|:---:|:---:|
+| ![SysWatt Main Dashboard Light](docs/screenshots/dashboard.png) | ![SysWatt Main Dashboard Dark](docs/screenshots/dashboard-dark.png) |
 
 ### 📊 TrafficMonitor-Style Historical Energy Statistics
 Modeled directly after classic Windows utility statistics:
@@ -79,21 +95,23 @@ Modeled directly after classic Windows utility statistics:
 <details>
 <summary><b>Click to view full screenshot gallery</b></summary>
 
-### Live Power Dashboard
-![Main Dashboard](docs/screenshots/dashboard.png)
+### Live Power Dashboard (Light & Dark Modes)
+| Light Mode | Dark Mode |
+|:---:|:---:|
+| ![Main Dashboard Light](docs/screenshots/dashboard.png) | ![Main Dashboard Dark](docs/screenshots/dashboard-dark.png) |
 
-### Historical Energy Statistics (List View)
-![Historical List](docs/screenshots/energy-list.png)
+### Historical Energy Statistics (List View & Calendar Heatmap)
+| List View (September 2026 Daily Telemetry) | Calendar View (Daily Energy Legend) |
+|:---:|:---:|
+| ![Historical List](docs/screenshots/energy-list.png) | ![Historical Calendar](docs/screenshots/energy-calendar.png) |
 
-### Historical Energy Statistics (Calendar Heatmap)
-![Historical Calendar](docs/screenshots/energy-calendar.png)
-
-### Option Settings Dialog
+### Option Settings Dialog (Power Model Envelopes & Rules)
 ![Option Settings](docs/screenshots/settings.png)
 
 ### Quick Tray Dashboard (Dark & Light)
-![Tray Dark](docs/screenshots/tray-dashboard-dark.png)
-![Tray Light](docs/screenshots/tray-dashboard-light.png)
+| Dark Theme | Light Theme |
+|:---:|:---:|
+| ![Tray Dark](docs/screenshots/tray-dashboard-dark.png) | ![Tray Light](docs/screenshots/tray-dashboard-light.png) |
 
 ### About & Developer Profiles Dialog
 ![About Dialog](docs/screenshots/about.png)
